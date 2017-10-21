@@ -3,7 +3,7 @@
   "Parameters": {
     "CustomerS3BucketParam": {
       "Type": "String",
-      "Default": "yourbuckethere",
+      "Default": "[Connect instance bucket name]",
       "Description": "Enter the the name of the bucket where your connect instance stores call recordings."
     },
     "VbApiTokenParam": {
@@ -37,7 +37,7 @@
         }
       }
     },
-    "voicebaseToStreamRole": {
+    "voicebaseCallbackRole": {
       "Type": "AWS::IAM::Role",
       "Properties": {
         "AssumeRolePolicyDocument": {
@@ -56,10 +56,10 @@
         }
       }
     },
-    "voicebaseToStreamKinesisPolicy": {
+    "voicebaseCallbackKinesisPolicy": {
       "Type": "AWS::IAM::Policy",
       "Properties": {
-        "PolicyName": "voicebaseToStreamKinesisPolicy",
+        "PolicyName": "voicebaseCallbackKinesisPolicy",
         "PolicyDocument": {
           "Version": "2012-10-17",
           "Statement": [{
@@ -77,14 +77,14 @@
           }]
         },
         "Roles": [{
-          "Ref": "voicebaseToStreamRole"
+          "Ref": "voicebaseCallbackRole"
         }]
       }
     },
-    "voicebaseToStreamLogPolicy": {
+    "voicebaseCallbackLogPolicy": {
       "Type": "AWS::IAM::Policy",
       "Properties": {
-        "PolicyName": "voicebaseToStreamLogPolicy",
+        "PolicyName": "voicebaseCallbackLogPolicy",
         "PolicyDocument": {
           "Version": "2012-10-17",
           "Statement": [{
@@ -104,7 +104,7 @@
                     "Fn::Select": ["6", {
                       "Fn::Split": [":", {
                         "Fn::GetAtt": [
-                          "voicebaseToStreamLambda",
+                          "voicebaseCallbackLambda",
                           "Arn"
                         ]
                       }]
@@ -116,7 +116,7 @@
           ]
         },
         "Roles": [{
-          "Ref": "voicebaseToStreamRole"
+          "Ref": "voicebaseCallbackRole"
         }]
       }
     },
@@ -378,14 +378,14 @@
         "Timeout": "90"
       }
     },
-    "voicebaseToStreamLambda": {
+    "voicebaseCallbackLambda": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "MemorySize": 256,
         "Handler": "com.voicebase.gateways.lily.LambdaTranscriptionProcessor::handleRequest",
         "Role": {
           "Fn::GetAtt": [
-            "voicebaseToStreamRole",
+            "voicebaseCallbackRole",
             "Arn"
           ]
         },
@@ -419,12 +419,12 @@
         "StartingPosition": "LATEST"
       }
     },
-    "connectToVoicebaseLambdaPermission": {
+    "voicebaseCallbackLambdaPermission": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:invokeFunction",
         "FunctionName": {
-          "Fn::GetAtt": ["voicebaseToStreamLambda", "Arn"]
+          "Fn::GetAtt": ["voicebaseCallbackLambda", "Arn"]
         },
         "Principal": "apigateway.amazonaws.com",
         "SourceArn": {
@@ -434,11 +434,11 @@
         }
       }
     },
-    "connectToVoicebaseStage": {
+    "voicebaseCallbackStage": {
       "Type": "AWS::ApiGateway::Stage",
       "Properties": {
         "DeploymentId": {
-          "Ref": "connectToVoicebaseDeployment"
+          "Ref": "voicebaseCallbackDeployment"
         },
         "MethodSettings": [{
           "DataTraceEnabled": true,
@@ -451,9 +451,9 @@
         "StageName": "latest"
       }
     },
-    "connectToVoicebaseDeployment": {
+    "voicebaseCallbackDeployment": {
       "Type": "AWS::ApiGateway::Deployment",
-      "DependsOn": ["connectToVoicebaseMethod"],
+      "DependsOn": ["voicebaseCallbackMethod"],
       "Properties": {
         "RestApiId": {
           "Ref": "VoicebaseCallbackApi"
@@ -461,7 +461,7 @@
         "StageName": "public"
       }
     },
-    "connectToVoicebaseResource": {
+    "voicebaseCallbackResource": {
       "Type": "AWS::ApiGateway::Resource",
       "Properties": {
         "RestApiId": {
@@ -473,8 +473,8 @@
         "PathPart": "outgoing"
       }
     },
-    "connectToVoicebaseMethod": {
-      "DependsOn": "connectToVoicebaseLambdaPermission",
+    "voicebaseCallbackMethod": {
+      "DependsOn": "voicebaseCallbackLambdaPermission",
       "Type": "AWS::ApiGateway::Method",
       "Properties": {
         "AuthorizationType": "NONE",
@@ -486,7 +486,7 @@
             "Fn::Join": ["", ["arn:aws:apigateway:", {
               "Ref": "AWS::Region"
             }, ":lambda:path/2015-03-31/functions/", {
-              "Fn::GetAtt": ["voicebaseToStreamLambda", "Arn"]
+              "Fn::GetAtt": ["voicebaseCallbackLambda", "Arn"]
             }, "/invocations"]]
           },
           "IntegrationResponses": [{
@@ -506,7 +506,7 @@
           "method.request.querystring.name": false
         },
         "ResourceId": {
-          "Ref": "connectToVoicebaseResource"
+          "Ref": "voicebaseCallbackResource"
         },
         "RestApiId": {
           "Ref": "VoicebaseCallbackApi"
