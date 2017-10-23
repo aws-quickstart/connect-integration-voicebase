@@ -1,5 +1,33 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "VoiceBase API Gateway for Amazon Connect",
+  "Metadata": {
+      "AWS::CloudFormation::Interface": {
+          "ParameterGroups": [
+              {
+                  "Label": {
+                      "default": "VoiceBase API Gateway"
+                  },
+                  "Parameters": [
+                      "CustomerS3BucketParam",
+                      "VbApiTokenParam",
+                      "numberOfKinesisShards"
+                  ]
+              }
+          ],
+          "ParameterLabels": {
+              "CustomerS3BucketParam": {
+                  "default": "S3 Transcript Bucket"
+              },
+              "VbApiTokenParam": {
+                  "default": "VoiceBase API Token"
+              },
+              "numberOfKinesisShards": {
+                  "default": "Kinesis Shard Count"
+              }
+          }
+      }
+  },
   "Parameters": {
     "CustomerS3BucketParam": {
       "Type": "String",
@@ -15,6 +43,23 @@
       "Type": "Number",
       "Default": 1,
       "Description": "Number of Kinesis stream shards"
+    }
+  },
+  "Rules": {
+    "RegionSupport": {
+        "Assertions": [
+            {
+                "Assert": {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "AWS::Region"
+                        },
+                        "us-east-1"
+                    ]
+                },
+                "AssertDescription": "Region must be US East (N. Virginia) - us-east-1"
+            }
+        ]
     }
   },
   "Resources": {
@@ -256,7 +301,7 @@
           "Ref": "numberOfKinesisShards"
         }
       }
-      
+
     },
     "connectToVoicebaseKeyAlias": {
       "Type": "AWS::KMS::Alias",
@@ -516,5 +561,25 @@
         }]
       }
     }
+},
+"Outputs": {
+  "connectToVoicebaseStream": {
+      "Description": "AWS Connect to VoiceBase Stream. Select this in your Connect Kinesis configuration.",
+      "Value": {
+          "Fn::GetAtt": "connectToVoicebaseStream.Arn"
+      }
+  },
+  "voicebaseTranscriptionStream": {
+      "Description": "VoiceBase Transcription Stream.  Transcription delivered from VoiceBase.",
+      "Value": {
+          "Fn::GetAtt": "voicebaseTranscriptionStream.Arn"
+      }
+  },
+  "connectToVoicebaseKey": {
+      "Description": "VoiceBase Gateway KMS Key.  Select this in your Connect config if required.",
+      "Value": {
+          "Fn::GetAtt": "connectToVoicebaseKey.Arn"
+      }
   }
+}
 }
