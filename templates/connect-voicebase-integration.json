@@ -17,7 +17,7 @@
           ],
           "ParameterLabels": {
               "CustomerS3BucketParam": {
-                  "default": "S3 Transcript Bucket"
+                  "default": "Call Recording S3 Bucket"
               },
               "VbApiTokenParam": {
                   "default": "VoiceBase API Token"
