@@ -12,6 +12,13 @@ public abstract class LambdaProcessor {
 
   protected static final Splitter CSV_SPLITTER = Splitter.on(",").omitEmptyStrings().trimResults();
 
+  protected void configureLogging(Map<String, String> env) {
+    if (env != null) {
+      String logConfig = env.get(Lambda.ENV_LOG_CONFIG);
+      LogConfigurer.configure(logConfig);
+    }
+  }
+
   protected boolean getBooleanSetting(Map<String, String> env, String key, boolean defaultValue) {
     if (env == null) {
       return defaultValue;

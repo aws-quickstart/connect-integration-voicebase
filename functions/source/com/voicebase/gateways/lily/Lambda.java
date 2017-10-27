@@ -2,6 +2,7 @@ package com.voicebase.gateways.lily;
 
 class Lambda {
 
+  static final String ENV_LOG_CONFIG="VOICEBASE_LOG_CONFIG";
   static final String ENV_API_CLIENT_LOGLEVEL = "VOICEBASE_API_CLIENT_LOGLEVEL";
   static final String ENV_API_RETRY_ATTEMPTS = "VOICEBASE_API_RETRY_ATTEMPTS";
   static final String ENV_API_RETRY_DELAY = "VOICEBASE_API_RETRY_DELAY";

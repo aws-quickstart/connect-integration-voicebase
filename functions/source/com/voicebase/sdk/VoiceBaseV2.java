@@ -64,6 +64,8 @@ public class VoiceBaseV2 {
   public String uploadMedia(String token, MediaProcessingRequest request) throws IOException {
 
     MediaProcessingResult result = null;
+    
+    LOGGER.debug("Voicebase upload request: {}", request);
 
     if (request.getMediaFile() != null) {
       TypedFile file = new TypedFile(mimeMap.getContentType(request.getMediaFile()), request.getMediaFile());

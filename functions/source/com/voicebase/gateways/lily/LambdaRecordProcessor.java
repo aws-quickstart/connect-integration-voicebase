@@ -94,6 +94,8 @@ public class LambdaRecordProcessor extends LambdaProcessor implements RequestHan
    *          environment
    */
   void doHandleRequest(List<KinesisEventRecord> eventRecords, Map<String, String> env) {
+    configureLogging(env);
+    
     boolean configureSpeakers = getBooleanSetting(env, Lambda.ENV_CONFIGURE_SPEAKERS, true);
     boolean predictionsEnabled = getBooleanSetting(env, Lambda.ENV_ENABLE_PREDICTIONS, true);
     String leftSpeakerName = getStringSetting(env, Lambda.ENV_LEFT_SPEAKER, Constants.DEFAULT_LEFT_SPEAKER_NAME);
@@ -172,7 +174,6 @@ public class LambdaRecordProcessor extends LambdaProcessor implements RequestHan
 
     Map<String, Object> dataAsMap = null;
     try {
-
       dataAsMap = objectMapper.readValue(bytes, Constants.MSG_JAVA_TYPE);
       LOGGER.debug("Msg received: {}", dataAsMap);
     } catch (IOException e) {

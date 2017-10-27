@@ -96,7 +96,8 @@ public class LambdaTranscriptionProcessor extends LambdaProcessor
   }
 
   void doHandleRequest(String processingResult, Map<String, String> env) {
-
+    configureLogging(env);
+    
     byte[] msgData = createOutdata(processingResult);
     String mediaId = null;
     String externalId = null;
