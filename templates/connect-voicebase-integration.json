@@ -3,21 +3,31 @@
     "Description": "VoiceBase API Gateway for Amazon Connect",
     "Metadata": {
         "AWS::CloudFormation::Interface": {
-            "ParameterGroups": [{
+            "ParameterGroups": [
+            {
+                "Label": {
+                    "default": "Connect Instance"
+                },
+                "Parameters": [
+                    "connectS3BucketArn",
+                    "connectKinesisStreamArn"
+                ]
+            },
+            {
                 "Label": {
                     "default": "VoiceBase API Gateway"
                 },
                 "Parameters": [
-                    "CustomerS3BucketParam",
-                    "VbApiTokenParam",
+                    "voicebaseApiToken",
                     "numberOfKinesisShards"
                 ]
-            }],
+            }
+            ],
             "ParameterLabels": {
-                "CustomerS3BucketParam": {
+                "connectS3BucketArn": {
                     "default": "Call Recording S3 Bucket ARN"
                 },
-                "VbApiTokenParam": {
+                "voicebaseApiToken": {
                     "default": "VoiceBase API Token"
                 },
                 "connectKinesisStreamArn": {
@@ -30,25 +40,25 @@
         }
     },
     "Parameters": {
-        "VbApiTokenParam": {
+        "voicebaseApiToken": {
             "Type": "String",
-            "Default": "[your API token]",
+            "Default": "",
             "Description": "Enter your Voicebase API Token"
         },
-        "CustomerS3BucketParam": {
+        "connectS3BucketArn": {
             "Type": "String",
-            "Default": "[Connect instance bucket ARN]",
-            "Description": "Enter the the name of the bucket where your connect instance stores call recordings."
+            "Default": "",
+            "Description": "Enter the ARN of the bucket where your Connect instance stores call recordings."
         },
         "connectKinesisStreamArn": {
             "Type": "String",
             "Default": "",
-            "Description": "Enter the ARN of Connect's output Kinesis stream."
+            "Description": "Enter the ARN of your Connect instance's output Kinesis stream."
         },
         "numberOfKinesisShards": {
             "Type": "Number",
             "Default": 1,
-            "Description": "Number of shards should be at least the number of shared on Connect's output stream."
+            "Description": "Number of shards for transcription stream, should be at least the number of shards on Connect's output stream."
         }
     },
     "Rules": {
@@ -193,8 +203,8 @@
                                 "s3:GetObjectAcl"
                             ],
                             "Resource": [{
-                                "Fn::Join": ["", ["arn:aws:s3:::", {
-                                    "Ref": "CustomerS3BucketParam"
+                                "Fn::Join": ["", [{
+                                    "Ref": "connectS3BucketArn"
                                 }, "/*"]]
                             }]
                         },
@@ -205,10 +215,8 @@
                                 "s3:GetBucketAcl"
                             ],
                             "Resource": [{
-                                "Fn::Join": ["", ["arn:aws:s3:::", {
-                                    "Ref": "CustomerS3BucketParam"
-                                }]]
-                            }]
+                                    "Ref": "connectS3BucketArn"
+                                }]
                         }
                     ]
                 },
@@ -343,7 +351,7 @@
                 "Environment": {
                     "Variables": {
                         "VOICEBASE_API_TOKEN": {
-                            "Ref": "VbApiTokenParam"
+                            "Ref": "voicebaseApiToken"
                         },
                         "VOICEBASE_CALLBACK_URL": {
                             "Fn::Join": ["", ["https://", {
