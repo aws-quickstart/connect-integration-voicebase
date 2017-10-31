@@ -1,27 +1,11 @@
 global:
   marketplace-ami: false
-  owner: quickstart-eng@amazon.com
+  owner: quickstart@amazon.com
   qsname: connect-integration-voicebase
   regions:
-    - ap-northeast-1
-    - ap-northeast-2
-    - ap-south-1
-    - ap-southeast-1
-    - ap-southeast-2
-    - ca-central-1
-    - eu-central-1
-    - eu-west-1
-    - sa-east-1
     - us-east-1
-    - us-east-2
-    - us-west-1
-    - us-west-2
   reporting: true
- 
 tests:
-  connect-integration-voicebaset1:
-    parameter_input: connect-integration-voicebase-example-params1.json
-    template_file: connect-integration-voicebase-example1.template
-  connect-integration-voicebaset2:
-    parameter_input: connect-integration-voicebase-example-params2.json
-    template_file: connect-integration-voicebase-example2.template
+  defaults:
+    parameter_input: defaults.json
+    template_file: voicebase.template
