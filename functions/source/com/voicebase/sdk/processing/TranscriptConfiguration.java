@@ -18,6 +18,9 @@ public class TranscriptConfiguration {
 	@JsonProperty("vocabularies")
 	private List<Vocabulary> vocabularies = null;
 
+	@JsonProperty("voiceFeatures")
+	private Boolean voiceFeatures=null;
+	
 	public Boolean getFormatNumbers() {
 		return formatNumbers;
 	}
@@ -57,7 +60,20 @@ public class TranscriptConfiguration {
 		return this;
 	}
 
-	@Override
+	public Boolean getVoiceFeatures() {
+    return voiceFeatures;
+  }
+
+  public void setVoiceFeatures(Boolean voiceFeatures) {
+    this.voiceFeatures = voiceFeatures;
+  }
+  
+  public TranscriptConfiguration withVoiceFeatures(Boolean voiceFeatures) {
+    setVoiceFeatures(voiceFeatures);
+    return this;
+  }
+
+  @Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;

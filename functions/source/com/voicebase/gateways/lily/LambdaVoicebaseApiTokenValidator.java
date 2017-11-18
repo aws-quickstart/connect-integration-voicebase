@@ -31,7 +31,7 @@ public class LambdaVoicebaseApiTokenValidator extends LambdaProcessor implements
   }
 
   private void doHandleRequest(Map<String, String> env) {
-    String vbApiUrl = getStringSetting(env, Lambda.ENV_API_URL, Lambda.DEFAULT_API_URL);
+    String vbApiUrl = getStringSetting(env, Lambda.ENV_API_URL, Lambda.DEFAULT_V2_API_URL);
     String vbApiClientLogLevel = getStringSetting(env, Lambda.ENV_API_CLIENT_LOGLEVEL, Lambda.DEFAULT_API_CLIENT_LOG_LEVEL);
     String vbApiToken = getStringSetting(env, Lambda.ENV_API_TOKEN, null);
     

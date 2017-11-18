@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
-final class VoiceBaseAttributeExtractor extends MapConfiguration {
+public final class VoiceBaseAttributeExtractor extends MapConfiguration {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(VoiceBaseAttributeExtractor.class);
 
@@ -36,7 +36,7 @@ final class VoiceBaseAttributeExtractor extends MapConfiguration {
    * 
    * @see KinesisRecordProcessor#Constants.VB_CONFIG_LIST_SEPARATOR
    */
-  static List<String> getStringParameterList(ImmutableConfiguration attr, String key) {
+  public static List<String> getStringParameterList(ImmutableConfiguration attr, String key) {
     String param = getStringParameter(attr, key);
     if (param != null) {
       String[] entries = param.split(Constants.VB_CONFIG_LIST_SEPARATOR);
@@ -55,7 +55,7 @@ final class VoiceBaseAttributeExtractor extends MapConfiguration {
     return null;
   }
 
-  static Set<String> getStringParameterSet(ImmutableConfiguration attr, String key) {
+  public static Set<String> getStringParameterSet(ImmutableConfiguration attr, String key) {
     List<String> params = getStringParameterList(attr, key);
     if (params != null && !params.isEmpty()) {
       return Sets.newHashSet(params);
@@ -78,7 +78,7 @@ final class VoiceBaseAttributeExtractor extends MapConfiguration {
    * 
    * @see KinesisRecordProcessor#Constants.VB_CONFIG_NULL_STRING
    */
-  static String getStringParameter(ImmutableConfiguration attr, String key) {
+  public static String getStringParameter(ImmutableConfiguration attr, String key) {
     if (attr != null && attr.containsKey(key)) {
       String param = attr.getString(key, null);
       if (!StringUtils.isEmpty(param) && !StringUtils.equalsIgnoreCase(param, Constants.VB_CONFIG_NULL_STRING)) {
@@ -88,7 +88,7 @@ final class VoiceBaseAttributeExtractor extends MapConfiguration {
     return null;
   }
 
-  static Boolean getBooleanParameter(ImmutableConfiguration attr, String key) {
+  public static Boolean getBooleanParameter(ImmutableConfiguration attr, String key) {
     String boolStr = getStringParameter(attr, key);
     if (boolStr != null) {
       try {
@@ -102,7 +102,7 @@ final class VoiceBaseAttributeExtractor extends MapConfiguration {
     return null;
   }
 
-  static String getVoicebaseAttributeName(String... levels) {
+  public static String getVoicebaseAttributeName(String... levels) {
     if (levels == null) {
       return null;
     }
@@ -113,7 +113,7 @@ final class VoiceBaseAttributeExtractor extends MapConfiguration {
   }
   
   @SuppressWarnings("unchecked")
-  static String getS3RecordingLocation(Map<String, Object> dataAsMap) {
+  public static String getS3RecordingLocation(Map<String, Object> dataAsMap) {
     if (dataAsMap == null) {
       return null;
     }
