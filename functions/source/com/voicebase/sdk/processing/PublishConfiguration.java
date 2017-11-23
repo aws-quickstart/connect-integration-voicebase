@@ -1,7 +1,6 @@
 package com.voicebase.sdk.processing;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -31,13 +30,6 @@ public class PublishConfiguration {
 		}
 		return this;
 	}
-	
-	 public PublishConfiguration addCallbacks(Collection<Callback> callbacks) {
-	    if (callbacks != null) {
-	      callbacks.addAll(callbacks);
-	    }
-	    return this;
-	  }
 
 	@Override
 	public int hashCode() {

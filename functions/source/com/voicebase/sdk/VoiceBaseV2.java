@@ -146,7 +146,7 @@ public class VoiceBaseV2 {
 
   public void getMediaInfo(String token, String mediaId) throws IOException, IllegalArgumentException {
     Preconditions.checkArgument(mediaId != null, "Need mediaId to fetch media information");
-    mediaService.getMediaInfo(authHeaderValue(token), mediaId);
+    mediaService.getMediaInfo(token, mediaId);
   }
 
   public File downloadMedia(String token, String mediaId, String fileExtension)

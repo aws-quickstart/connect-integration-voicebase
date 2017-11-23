@@ -19,7 +19,6 @@
                 },
                 "Parameters": [
                     "voicebaseApiToken",
-                    "voicebaseEnableKnowledgeDiscovery",
                     "numberOfKinesisShards"
                 ]
             }
@@ -30,9 +29,6 @@
                 },
                 "voicebaseApiToken": {
                     "default": "VoiceBase API Token"
-                },
-                "voicebaseEnableKnowledgeDiscovery": {
-                    "default": "Keyword/Topic extraction"
                 },
                 "connectKinesisStreamArn": {
                     "default": "Connect Output Stream ARN"
@@ -49,15 +45,6 @@
             "Default": "",
             "Description": "Enter your Voicebase API Token"
         },
-        "voicebaseEnableKnowledgeDiscovery": {
-            "AllowedValues": [
-                "no",
-                "yes"
-            ],
-            "Type": "String",
-            "Default": "no",
-            "Description": "Enable keyword/topic extraction when processing media files by default"
-        },        
         "connectS3BucketArn": {
             "Type": "String",
             "Default": "",
@@ -86,11 +73,6 @@
                 },
                 "AssertDescription": "Region must be US East (N. Virginia) - us-east-1"
             }]
-        }
-    },
-    "Conditions": {
-        "enableKnowledgeDiscovery": {
-           "Fn::Equals": [{ "Ref": "voicebaseEnableKnowledgeDiscovery" },"yes"]
         }
     },
     "Resources": {
@@ -371,9 +353,6 @@
                         "VOICEBASE_API_TOKEN": {
                             "Ref": "voicebaseApiToken"
                         },
-                        "VOICEBASE_KNOWLEDGE_DISCOVERY_ENABLE": {
-                            "Fn::If": ["enableKnowledgeDiscovery","true","false"]      
-                        },                        
                         "VOICEBASE_CALLBACK_URL": {
                             "Fn::Join": ["", ["https://", {
                                 "Ref": "VoicebaseCallbackApi"
@@ -415,7 +394,7 @@
         },
         "connectToVoicebaseLambdaMapping": {
             "Type": "AWS::Lambda::EventSourceMapping",
-            "DependsOn": ["connectToVoicebaseKinesisPolicy","connectToVoicebaseLogPolicy"],
+            "DependsOn": ["connectToVoicebaseKinesisPolicy"],
             "Properties": {
                 "BatchSize": 10,
                 "Enabled": true,

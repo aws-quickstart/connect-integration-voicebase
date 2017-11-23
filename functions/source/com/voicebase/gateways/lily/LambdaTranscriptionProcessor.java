@@ -2,16 +2,11 @@ package com.voicebase.gateways.lily;
 
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.TimeZone;
 
-import javax.activation.MimetypesFileTypeMap;
-
 import org.apache.commons.lang3.StringUtils;
-import org.apache.http.impl.client.HttpClientBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,23 +19,7 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
-import com.voicebase.api.model.VbCallbackConfiguration;
-import com.voicebase.api.model.VbConfiguration;
-import com.voicebase.api.model.VbHttpMethodEnum;
-import com.voicebase.api.model.VbMedia;
-import com.voicebase.api.model.VbMetadata;
-import com.voicebase.api.model.VbPublishConfiguration;
-import com.voicebase.sdk.MediaServiceV3;
-import com.voicebase.sdk.VoiceBaseV3;
-import com.voicebase.sdk.util.NoAuthHeaderHttpClientRedirectStrategy;
-import com.voicebase.sdk.util.RetrofitToSlf4jLogger;
-import com.voicebase.sdk.v3.MediaProcessingRequest;
-
-import retrofit.RestAdapter;
-import retrofit.RestAdapter.LogLevel;
-import retrofit.client.ApacheClient;
-import retrofit.client.Client;
-import retrofit.converter.JacksonConverter;
+import com.voicebase.sdk.processing.CallbackResult;
 
 public class LambdaTranscriptionProcessor extends LambdaProcessor
     implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponse> {
@@ -60,25 +39,14 @@ public class LambdaTranscriptionProcessor extends LambdaProcessor
   private final APIGatewayProxyResponse responseInvalidRequest;
   private final APIGatewayProxyResponse responseServerError;
 
-  private final MimetypesFileTypeMap mimeMap;
   private final ObjectMapper objectMapper;
   private final AmazonKinesis kinesisClient = AmazonKinesisClientBuilder.defaultClient();
-
-  private final VoiceBaseV3 voicebaseClient;
-  private MediaServiceV3 mediaService;
-  private String mediaServiceId;
 
   public LambdaTranscriptionProcessor() {
     SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
     df.setTimeZone(TimeZone.getTimeZone("UTC"));
     objectMapper = new ObjectMapper();
     objectMapper.setDateFormat(df);
-
-    mimeMap = new MimetypesFileTypeMap();
-    mimeMap.addMimeTypes("audio/mpeg mp3 mpeg3\naudio/ogg ogg\naudio/flac flac");
-
-    voicebaseClient = new VoiceBaseV3();
-    voicebaseClient.setMimeMap(mimeMap);
 
     String successResponse;
     String failureResponse;
@@ -129,29 +97,16 @@ public class LambdaTranscriptionProcessor extends LambdaProcessor
 
   void doHandleRequest(String processingResult, Map<String, String> env) {
     configureLogging(env);
-
-    String vbApiUrl = getStringSetting(env, Lambda.ENV_API_URL, Lambda.DEFAULT_V3_API_URL);
-    String vbApiClientLogLevel = getStringSetting(env, Lambda.ENV_API_CLIENT_LOGLEVEL,
-        Lambda.DEFAULT_API_CLIENT_LOG_LEVEL);
-    String vbApiToken = getStringSetting(env, Lambda.ENV_API_TOKEN, null);
-    long vbApiRetryDelay = getLongSetting(env, Lambda.ENV_API_RETRY_DELAY, Lambda.DEFAULT_API_RETRY_DELAY);
-    int vbApiRetryAttempts = getIntSetting(env, Lambda.ENV_API_RETRY_ATTEMPTS, Lambda.DEFAULT_API_RETRY_ATTEMPTS);
-
-    String callbackUrl = getStringSetting(env, Lambda.ENV_CALLBACK_URL, null);
-    String callbackMethod = getStringSetting(env, Lambda.ENV_CALLBACK_METHOD, Lambda.DEFAULT_CALLBACK_METHOD)
-        .toUpperCase();
-
+    
     byte[] msgData = createOutdata(processingResult);
     String mediaId = null;
     String externalId = null;
 
-    VbMedia result = null;
     try {
-      result = objectMapper.readValue(processingResult.getBytes(), VbMedia.class);
-      mediaId = result.getMediaId();
-      externalId = result.getMetadata().getExternalId();
+      CallbackResult result = objectMapper.readValue(processingResult.getBytes(), CallbackResult.class);
+      mediaId = result.getMedia().getMediaId();
+      externalId = result.getMedia().getMetadata().getExternal().getId();
     } catch (Exception e) {
-      LOGGER.debug("Problem accessing mediaId/externalId", e);
     }
 
     LOGGER.info("Transcript for call ID {}, media ID {} received.", externalId, mediaId);
@@ -163,46 +118,11 @@ public class LambdaTranscriptionProcessor extends LambdaProcessor
       } else if (mediaId != null) {
         partitionKey = mediaId;
       }
-      try {
-        String outputStream = getOutputStreamName(env);
-        kinesisClient.putRecord(new PutRecordRequest().withStreamName(outputStream).withData(ByteBuffer.wrap(msgData))
-            .withPartitionKey(partitionKey));
-        LOGGER.debug("Transcript for call ID {}, media ID {} sent to {}", externalId, mediaId, outputStream);
-        LOGGER.trace("VB API processing result: {}", processingResult);
-      } catch (Exception e) {
-        LOGGER.error("Unable to write result to Kinesis", e);
-        // re-throw to let the callback try again
-        throw e;
-      }
-
-      if (callbackUrl != null) {
-        try {
-          LOGGER.debug("Requesting additional callback to {}", callbackUrl);
-          voicebaseClient.setMediaService(createMediaServiceV3(vbApiUrl, vbApiClientLogLevel));
-
-          VbConfiguration configBuilder = VbConfiguration.builder()
-              .publish(VbPublishConfiguration.builder().callbacks(Collections.singletonList(VbCallbackConfiguration
-                  .builder().url(callbackUrl).method(VbHttpMethodEnum.valueOf(callbackMethod)).build())).build())
-              .build();
-
-          VbMetadata metadata = null;
-          if (result != null && result.getMetadata() != null) {
-            Map<String, Object> previousMetadata = result.getMetadata().getExtended();
-            if (previousMetadata != null) {
-              metadata = VbMetadata.builder().extended(previousMetadata).externalId(externalId).build();
-            }
-          }
-
-          voicebaseClient.updateMedia(vbApiToken, mediaId,
-              new MediaProcessingRequest().withConfiguration(configBuilder).withMetadata(metadata), vbApiRetryAttempts,
-              vbApiRetryDelay);
-          LOGGER.info("Requested additional callback to {}", callbackUrl);
-
-        } catch (Exception e) {
-          LOGGER.warn("Unable to hit Voicebase API, skipping additional callbacks.", e);
-        }
-      }
-
+      String outputStream = getOutputStreamName(env);
+      kinesisClient.putRecord(new PutRecordRequest().withStreamName(outputStream).withData(ByteBuffer.wrap(msgData))
+          .withPartitionKey(partitionKey));
+      LOGGER.info("Transcript for call ID {}, media ID {} sent to {}", externalId, mediaId, outputStream);
+      LOGGER.trace("VB API processing result: {}", processingResult);
     } else {
       LOGGER.warn("No usable data received, not writing output to stream");
     }
@@ -279,35 +199,6 @@ public class LambdaTranscriptionProcessor extends LambdaProcessor
     }
 
     return processingResult.getBytes();
-  }
-
-  private MediaServiceV3 createMediaServiceV3(String endpointUrl, String logLevel) {
-    if (endpointUrl == null) {
-      return null;
-    }
-
-    String id = endpointUrl + logLevel;
-
-    if (mediaService != null && Objects.equals(id, mediaServiceId)) {
-      return mediaService;
-    }
-
-    LogLevel clientLogLevel = LogLevel.valueOf(logLevel);
-    RetrofitToSlf4jLogger log = new RetrofitToSlf4jLogger(MediaServiceV3.class);
-
-    Client client = new ApacheClient(
-        HttpClientBuilder.create().setRedirectStrategy(new NoAuthHeaderHttpClientRedirectStrategy()).build());
-
-    RestAdapter retrofit = new RestAdapter.Builder().setEndpoint(endpointUrl).setClient(client)
-        .setConverter(new JacksonConverter(objectMapper)).setLog(log).setLogLevel(clientLogLevel).build();
-
-    MediaServiceV3 service = retrofit.create(MediaServiceV3.class);
-
-    mediaService = service;
-    mediaServiceId = id;
-
-    return service;
-
   }
 
 }
