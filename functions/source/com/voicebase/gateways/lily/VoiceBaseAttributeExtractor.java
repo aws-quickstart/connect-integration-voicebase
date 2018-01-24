@@ -17,7 +17,24 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
-final class VoiceBaseAttributeExtractor extends MapConfiguration {
+/**
+ * Copyright 2017-2018 VoiceBase, Inc. or its affiliates. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may not
+ * use this file except in compliance with the License. A copy of the License is
+ * located at 
+ * 
+ *      http://aws.amazon.com/apache2.0/ 
+ *      
+ * or in the "license" file
+ * accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ * 
+ * @author volker@voicebase.com
+ *
+ */
+public final class VoiceBaseAttributeExtractor extends MapConfiguration {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(VoiceBaseAttributeExtractor.class);
 
@@ -36,7 +53,7 @@ final class VoiceBaseAttributeExtractor extends MapConfiguration {
    * 
    * @see KinesisRecordProcessor#Constants.VB_CONFIG_LIST_SEPARATOR
    */
-  static List<String> getStringParameterList(ImmutableConfiguration attr, String key) {
+  public static List<String> getStringParameterList(ImmutableConfiguration attr, String key) {
     String param = getStringParameter(attr, key);
     if (param != null) {
       String[] entries = param.split(Constants.VB_CONFIG_LIST_SEPARATOR);
@@ -55,7 +72,7 @@ final class VoiceBaseAttributeExtractor extends MapConfiguration {
     return null;
   }
 
-  static Set<String> getStringParameterSet(ImmutableConfiguration attr, String key) {
+  public static Set<String> getStringParameterSet(ImmutableConfiguration attr, String key) {
     List<String> params = getStringParameterList(attr, key);
     if (params != null && !params.isEmpty()) {
       return Sets.newHashSet(params);
@@ -78,7 +95,7 @@ final class VoiceBaseAttributeExtractor extends MapConfiguration {
    * 
    * @see KinesisRecordProcessor#Constants.VB_CONFIG_NULL_STRING
    */
-  static String getStringParameter(ImmutableConfiguration attr, String key) {
+  public static String getStringParameter(ImmutableConfiguration attr, String key) {
     if (attr != null && attr.containsKey(key)) {
       String param = attr.getString(key, null);
       if (!StringUtils.isEmpty(param) && !StringUtils.equalsIgnoreCase(param, Constants.VB_CONFIG_NULL_STRING)) {
@@ -88,7 +105,7 @@ final class VoiceBaseAttributeExtractor extends MapConfiguration {
     return null;
   }
 
-  static Boolean getBooleanParameter(ImmutableConfiguration attr, String key) {
+  public static Boolean getBooleanParameter(ImmutableConfiguration attr, String key) {
     String boolStr = getStringParameter(attr, key);
     if (boolStr != null) {
       try {
@@ -102,7 +119,7 @@ final class VoiceBaseAttributeExtractor extends MapConfiguration {
     return null;
   }
 
-  static String getVoicebaseAttributeName(String... levels) {
+  public static String getVoicebaseAttributeName(String... levels) {
     if (levels == null) {
       return null;
     }
@@ -113,7 +130,7 @@ final class VoiceBaseAttributeExtractor extends MapConfiguration {
   }
   
   @SuppressWarnings("unchecked")
-  static String getS3RecordingLocation(Map<String, Object> dataAsMap) {
+  public static String getS3RecordingLocation(Map<String, Object> dataAsMap) {
     if (dataAsMap == null) {
       return null;
     }

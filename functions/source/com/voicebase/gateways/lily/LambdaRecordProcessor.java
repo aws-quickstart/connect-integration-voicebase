@@ -15,6 +15,7 @@ import java.util.TimeZone;
 import javax.activation.MimetypesFileTypeMap;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,11 +31,12 @@ import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.GeneratePresignedUrlRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
-import com.voicebase.sdk.MediaServiceV2;
-import com.voicebase.sdk.VoiceBaseV2;
-import com.voicebase.sdk.processing.MediaProcessingRequest;
+import com.voicebase.sdk.MediaServiceV3;
+import com.voicebase.sdk.VoiceBaseV3;
 import com.voicebase.sdk.util.NoAuthHeaderHttpClientRedirectStrategy;
 import com.voicebase.sdk.util.RetrofitToSlf4jLogger;
+import com.voicebase.sdk.v3.MediaProcessingRequest;
+import com.voicebase.sdk.v3.MediaProcessingRequestBuilder;
 
 import retrofit.RestAdapter;
 import retrofit.RestAdapter.LogLevel;
@@ -42,23 +44,42 @@ import retrofit.client.ApacheClient;
 import retrofit.client.Client;
 import retrofit.converter.JacksonConverter;
 
+/**
+ * Copyright 2017-2018 VoiceBase, Inc. or its affiliates. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may not
+ * use this file except in compliance with the License. A copy of the License is
+ * located at 
+ * 
+ *      http://aws.amazon.com/apache2.0/ 
+ *      
+ * or in the "license" file
+ * accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ * 
+ * @author volker@voicebase.com
+ *
+ */
 public class LambdaRecordProcessor extends LambdaProcessor implements RequestHandler<KinesisEvent, Void> {
 
-
-
   private static final Logger LOGGER = LoggerFactory.getLogger(LambdaRecordProcessor.class);
-  
-  private static final List<String> DEFAULT_CALLBACK_INCLUDES = Lists.newArrayList("metadata", "transcripts",
-      "keywords", "topics", "predictions");
+
+  private static final List<String> DEFAULT_CALLBACK_INCLUDES_V3 = Lists.newArrayList("METADATA", "TRANSCRIPT",
+      "SPOTTING", "KNOWLEDGE", "PREDICTION");
 
   private static final long DEFAULT_MEDIA_URL_TTL_MILLIS = 900000L; // 15min
+  
+  // HTTP client settings
+  private static final int CLIENT_CONNECTION_REQUEST_TIMEOUT = 30000;
+  private static final int CLIENT_CONNECT_TIMEOUT = 30000;
+  private static final int CLIENT_SOCKET_TIMEOUT = 90000;
 
   private final ObjectMapper objectMapper;
   private final MimetypesFileTypeMap mimeMap;
   private final AmazonS3 s3Client;
-  private MediaServiceV2 mediaService = null;
+  private MediaServiceV3 mediaService = null;
   private String mediaServiceId = null;
-
 
   public LambdaRecordProcessor() {
     SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
@@ -95,27 +116,36 @@ public class LambdaRecordProcessor extends LambdaProcessor implements RequestHan
    */
   void doHandleRequest(List<KinesisEventRecord> eventRecords, Map<String, String> env) {
     configureLogging(env);
-    
+
     boolean configureSpeakers = getBooleanSetting(env, Lambda.ENV_CONFIGURE_SPEAKERS, true);
     boolean predictionsEnabled = getBooleanSetting(env, Lambda.ENV_ENABLE_PREDICTIONS, true);
+    boolean knowledgeEnabled = getBooleanSetting(env, Lambda.ENV_ENABLE_KNOWLEDGE_DISCOVERY,
+        Lambda.DEFAULT_ENABLE_KNOWLEDGE_DISCOVERY);
     String leftSpeakerName = getStringSetting(env, Lambda.ENV_LEFT_SPEAKER, Constants.DEFAULT_LEFT_SPEAKER_NAME);
     String rightSpeakerName = getStringSetting(env, Lambda.ENV_RIGHT_SPEAKER, Constants.DEFAULT_RIGHT_SPEAKER_NAME);
     long mediaUrlTtl = getLongSetting(env, Lambda.ENV_MEDIA_URL_TTL_MILLIS, DEFAULT_MEDIA_URL_TTL_MILLIS);
 
-    String vbApiUrl = getStringSetting(env, Lambda.ENV_API_URL, Lambda.DEFAULT_API_URL);
-    String vbApiClientLogLevel = getStringSetting(env, Lambda.ENV_API_CLIENT_LOGLEVEL, Lambda.DEFAULT_API_CLIENT_LOG_LEVEL);
+    String vbApiUrl = getStringSetting(env, Lambda.ENV_API_URL, Lambda.DEFAULT_V3_API_URL);
+    String vbApiClientLogLevel = getStringSetting(env, Lambda.ENV_API_CLIENT_LOGLEVEL,
+        Lambda.DEFAULT_API_CLIENT_LOG_LEVEL);
     String vbApiToken = getStringSetting(env, Lambda.ENV_API_TOKEN, null);
     long vbApiRetryDelay = getLongSetting(env, Lambda.ENV_API_RETRY_DELAY, Lambda.DEFAULT_API_RETRY_DELAY);
     int vbApiRetryAttempts = getIntSetting(env, Lambda.ENV_API_RETRY_ATTEMPTS, Lambda.DEFAULT_API_RETRY_ATTEMPTS);
 
     String callbackUrl = getStringSetting(env, Lambda.ENV_CALLBACK_URL, null);
     String callbackMethod = getStringSetting(env, Lambda.ENV_CALLBACK_METHOD, Lambda.DEFAULT_CALLBACK_METHOD);
-    List<String> callbackIncludes = getStringListSetting(env, Lambda.ENV_CALLBACK_INCLUDES, DEFAULT_CALLBACK_INCLUDES);
+    List<String> callbackIncludes = getStringListSetting(env, Lambda.ENV_CALLBACK_INCLUDES,
+        DEFAULT_CALLBACK_INCLUDES_V3);
+    List<String> additionalCallbackUrls = getStringListSetting(env, Lambda.ENV_CALLBACK_ADDITIONAL_URLS, null);
 
-    CallbackProvider callbackProvider = createCallbackProvider(callbackUrl, callbackMethod, callbackIncludes);
+    CallbackProvider callbackProvider = new CallbackProvider();
+    callbackProvider.setIncludes(callbackIncludes);
+    callbackProvider.setCallbackMethod(callbackMethod);
+    callbackProvider.setCallbackUrl(callbackUrl);
+    callbackProvider.setAdditionalCallbackUrls(additionalCallbackUrls);
 
-    VoiceBaseV2 voicebaseClient = new VoiceBaseV2();
-    voicebaseClient.setMediaService(createMediaServiceV2(vbApiUrl, vbApiClientLogLevel));
+    VoiceBaseV3 voicebaseClient = new VoiceBaseV3();
+    voicebaseClient.setMediaService(createMediaServiceV3(vbApiUrl, vbApiClientLogLevel));
     voicebaseClient.setMimeMap(mimeMap);
 
     for (KinesisEventRecord recordEvent : eventRecords) {
@@ -128,12 +158,12 @@ public class LambdaRecordProcessor extends LambdaProcessor implements RequestHan
 
           String externalId = dataAsMap.get(Constants.KEY_EXTERNAL_ID).toString();
 
-          VoicebaseRequestBuilder builder = new VoicebaseRequestBuilder().withCallbackProvider(callbackProvider)
-              .withConfigureSpeakers(configureSpeakers).withPredictionsEnabled(predictionsEnabled)
+          MediaProcessingRequestBuilder builder = new MediaProcessingRequestBuilder()
+              .withCallbackProvider(callbackProvider).withConfigureSpeakers(configureSpeakers)
+              .withPredictionsEnabled(predictionsEnabled).withKnowledgeDiscoveryEnabled(knowledgeEnabled)
               .withAwsInputData(dataAsMap).withLeftSpeakerName(leftSpeakerName).withRightSpeakerName(rightSpeakerName);
 
-          builder.build();
-          MediaProcessingRequest req = builder.getRequest();
+          MediaProcessingRequest req = builder.build();
 
           String s3Location = getS3RecordingLocation(dataAsMap);
 
@@ -223,20 +253,10 @@ public class LambdaRecordProcessor extends LambdaProcessor implements RequestHan
     }
   }
 
-  /**
-   * Create Voicebase MediaService.
-   * 
-   * Will returned a cached instance of the service as long as endpoint URL and
-   * log level don't change.
-   * 
-   * @param endpointUrl
-   *          URL of Voicebase API endpoint
-   * @param logLevel
-   *          log level of underlying HTTP client
-   * 
-   * @return the media service
-   */
-  private MediaServiceV2 createMediaServiceV2(String endpointUrl, String logLevel) {
+  private MediaServiceV3 createMediaServiceV3(String endpointUrl, String logLevel) {
+    if (endpointUrl == null) {
+      return null;
+    }
 
     String id = endpointUrl + logLevel;
 
@@ -245,32 +265,26 @@ public class LambdaRecordProcessor extends LambdaProcessor implements RequestHan
     }
 
     LogLevel clientLogLevel = LogLevel.valueOf(logLevel);
-    RetrofitToSlf4jLogger log = new RetrofitToSlf4jLogger(MediaServiceV2.class);
+    RetrofitToSlf4jLogger log = new RetrofitToSlf4jLogger(MediaServiceV3.class);
+
+    RequestConfig requestConfig = RequestConfig.custom().setSocketTimeout(CLIENT_SOCKET_TIMEOUT)
+        .setConnectTimeout(CLIENT_CONNECT_TIMEOUT).setConnectionRequestTimeout(CLIENT_CONNECTION_REQUEST_TIMEOUT)
+        .build();
 
     Client client = new ApacheClient(
-        HttpClientBuilder.create().setRedirectStrategy(new NoAuthHeaderHttpClientRedirectStrategy()).build());
+        HttpClientBuilder.create().setRedirectStrategy(new NoAuthHeaderHttpClientRedirectStrategy())
+            .setDefaultRequestConfig(requestConfig).build());
 
     RestAdapter retrofit = new RestAdapter.Builder().setEndpoint(endpointUrl).setClient(client)
         .setConverter(new JacksonConverter(objectMapper)).setLog(log).setLogLevel(clientLogLevel).build();
 
-    MediaServiceV2 service = retrofit.create(MediaServiceV2.class);
+    MediaServiceV3 service = retrofit.create(MediaServiceV3.class);
 
     mediaService = service;
     mediaServiceId = id;
 
     return service;
 
-  }
-
-  private CallbackProvider createCallbackProvider(String callbackUrl, String callbackMethod,
-      Iterable<String> includes) {
-
-    CallbackProvider provider = new CallbackProvider();
-    provider.setIncludes(includes);
-    provider.setCallbackMethod(callbackMethod);
-    provider.setCallbackUrl(callbackUrl);
-
-    return provider;
   }
 
 }
