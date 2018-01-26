@@ -3,6 +3,7 @@ package com.voicebase.gateways.lily;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,7 +12,18 @@ import com.voicebase.sdk.util.RequestSigner;
 import com.voicebase.sdk.util.RequestSigner.SignatureParameters;
 
 /**
- * Generator for Voicebase API callback URLs.
+ * Copyright 2017-2018 VoiceBase, Inc. or its affiliates. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may not
+ * use this file except in compliance with the License. A copy of the License is
+ * located at 
+ * 
+ *      http://aws.amazon.com/apache2.0/ 
+ *      
+ * or in the "license" file
+ * accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  * 
  * @author volker@voicebase.com
  *
@@ -24,6 +36,7 @@ public class CallbackProvider {
   private String callbackMethod;
   private Set<String> includes;
   private boolean urlHasParameters = false;
+  private Set<String> additionalCallbackUrls;
 
   private RequestSigner requestSigner;
 
@@ -35,16 +48,42 @@ public class CallbackProvider {
       }
     }
   }
-  
-  
-  public void setIncludes(Iterable<String>includes) {
+
+  public void setIncludes(Iterable<String> includes) {
     this.includes = new HashSet<>();
     if (includes != null) {
       for (String include : includes) {
-        this.includes.add(include);
+        if (!StringUtils.isEmpty(include)) {
+          this.includes.add(include);
+        }
       }
-      
+
     }
+  }
+
+  public boolean hasIncludes() {
+    return includes != null && !includes.isEmpty();
+  }
+
+  public void setAdditionalCallbackUrls(Iterable<String> additionalCallbackUrls) {
+    if (this.additionalCallbackUrls == null) {
+      this.additionalCallbackUrls = new HashSet<>();
+    } else {
+      this.additionalCallbackUrls.clear();
+    }
+    if (additionalCallbackUrls != null) {
+      for (String additionalUrl : additionalCallbackUrls) {
+        this.additionalCallbackUrls.add(additionalUrl);
+      }
+    }
+  }
+
+  public Set<String> getAdditionalCallbackUrls() {
+    return this.additionalCallbackUrls;
+  }
+
+  public boolean hasAdditionalCallbackUrls() {
+    return additionalCallbackUrls != null && !additionalCallbackUrls.isEmpty();
   }
 
   public String getCallbackUrl() {
@@ -101,4 +140,18 @@ public class CallbackProvider {
     callback.setUrl(urlBuilder.toString());
     return callback;
   }
+
+  public Set<Callback> getAdditionalCallbacks() {
+    HashSet<Callback> callbacks = new HashSet<>();
+    if (additionalCallbackUrls != null) {
+      for (String additionalUrl : additionalCallbackUrls) {
+        Callback callback = new Callback();
+        callback.setUrl(additionalUrl);
+        callback.setMethod(callbackMethod);
+        callback.setInclude(includes);
+      }
+    }
+    return callbacks;
+  }
+
 }
