@@ -34,6 +34,23 @@ import com.voicebase.sdk.processing.Speaker;
 import com.voicebase.sdk.processing.TranscriptConfiguration;
 import com.voicebase.sdk.processing.Vocabulary;
 
+/**
+ * Copyright 2017-2018 VoiceBase, Inc. or its affiliates. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may not
+ * use this file except in compliance with the License. A copy of the License is
+ * located at 
+ * 
+ *      http://aws.amazon.com/apache2.0/ 
+ *      
+ * or in the "license" file
+ * accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ * 
+ * @author volker@voicebase.com
+ *
+ */
 public class VoicebaseRequestBuilder {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(VoicebaseRequestBuilder.class);
@@ -127,11 +144,11 @@ public class VoicebaseRequestBuilder {
     externalId = awsInputData.get(Constants.KEY_EXTERNAL_ID).toString();
     configuration = createConfiguration();
     metaData = createMetaData();
-    
-    request=new MediaProcessingRequest();
+
+    request = new MediaProcessingRequest();
     request.setConfiguration(configuration);
     request.setMetadata(metaData);
-    
+
     return request;
   }
 
@@ -155,7 +172,8 @@ public class VoicebaseRequestBuilder {
   private Configuration createConfiguration() {
 
     Configuration conf = new Configuration()
-        .withPublishConfiguration(new PublishConfiguration().addCallback(callbackProvider.newCallback()))
+        .withPublishConfiguration(new PublishConfiguration().addCallback(callbackProvider.newCallback())
+            .addCallbacks(callbackProvider.getAdditionalCallbacks()))
         .withTranscriptConfiguration(new TranscriptConfiguration()).withIngestConfiguration(new IngestConfiguration());
 
     @SuppressWarnings("unchecked")
@@ -214,6 +232,7 @@ public class VoicebaseRequestBuilder {
             predictions.add(new PredictionConfiguration().withModelName(classifier));
           }
           conf.setPredictionConfigurations(predictions);
+          conf.getTranscriptConfiguration().setVoiceFeatures(true);
           attributes.put(getVoicebaseAttributeName(Constants.VB_ATTR_CLASSIFIER, Constants.VB_ATTR_CLASSIFIER_NAMES),
               classifierNames);
         }
