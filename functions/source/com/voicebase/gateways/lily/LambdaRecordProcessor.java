@@ -1,3 +1,21 @@
+/**
+ * Copyright 2017-2018 VoiceBase, Inc. or its affiliates. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may not
+ * use this file except in compliance with the License. A copy of the License is
+ * located at
+ *
+ *      http://aws.amazon.com/apache2.0/
+ *
+ * or in the "license" file
+ * accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ *
+ * @author volker@voicebase.com
+ *
+ */
+
 package com.voicebase.gateways.lily;
 
 import static com.voicebase.gateways.lily.VoiceBaseAttributeExtractor.getS3RecordingLocation;
@@ -44,23 +62,6 @@ import retrofit.client.ApacheClient;
 import retrofit.client.Client;
 import retrofit.converter.JacksonConverter;
 
-/**
- * Copyright 2017-2018 VoiceBase, Inc. or its affiliates. All Rights Reserved.
- * Licensed under the Apache License, Version 2.0 (the "License"). You may not
- * use this file except in compliance with the License. A copy of the License is
- * located at 
- * 
- *      http://aws.amazon.com/apache2.0/ 
- *      
- * or in the "license" file
- * accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
- * 
- * @author volker@voicebase.com
- *
- */
 public class LambdaRecordProcessor extends LambdaProcessor implements RequestHandler<KinesisEvent, Void> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LambdaRecordProcessor.class);
@@ -69,7 +70,7 @@ public class LambdaRecordProcessor extends LambdaProcessor implements RequestHan
       "SPOTTING", "KNOWLEDGE", "PREDICTION");
 
   private static final long DEFAULT_MEDIA_URL_TTL_MILLIS = 900000L; // 15min
-  
+
   // HTTP client settings
   private static final int CLIENT_CONNECTION_REQUEST_TIMEOUT = 30000;
   private static final int CLIENT_CONNECT_TIMEOUT = 30000;
@@ -108,7 +109,7 @@ public class LambdaRecordProcessor extends LambdaProcessor implements RequestHan
 
   /**
    * Actual request handling.
-   * 
+   *
    * @param eventRecords
    *          records received from Kinesis
    * @param env
@@ -190,11 +191,11 @@ public class LambdaRecordProcessor extends LambdaProcessor implements RequestHan
 
   /**
    * Get Kinesis record and deserialize to map.
-   * 
+   *
    * @param recordEvent
-   * 
+   *
    * @return Record deserialized into a map.
-   * 
+   *
    * @throws IOException
    */
   Map<String, Object> readKinesisRecord(KinesisEventRecord recordEvent) throws IOException {
@@ -215,16 +216,16 @@ public class LambdaRecordProcessor extends LambdaProcessor implements RequestHan
 
   /**
    * Create a pre-signed URL for given S3 bucket, object key and time to live.
-   * 
+   *
    * @param bucketName
    *          S3 bucket containing the object
    * @param objectKey
    *          S3 object key
    * @param ttl
    *          time to live for the pre-signed URL.
-   * 
+   *
    * @return pre-signed URL
-   * 
+   *
    * @throws SdkClientException
    *           if pre-signing the URL failed.
    * @throws IllegalArgumentException

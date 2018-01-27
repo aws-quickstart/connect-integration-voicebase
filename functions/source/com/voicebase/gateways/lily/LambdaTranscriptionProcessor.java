@@ -1,3 +1,21 @@
+/**
+ * Copyright 2017-2018 VoiceBase, Inc. or its affiliates. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may not
+ * use this file except in compliance with the License. A copy of the License is
+ * located at
+ *
+ *      http://aws.amazon.com/apache2.0/
+ *
+ * or in the "license" file
+ * accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ *
+ * @author volker@voicebase.com
+ *
+ */
+
 package com.voicebase.gateways.lily;
 
 import java.nio.ByteBuffer;
@@ -42,23 +60,7 @@ import retrofit.client.ApacheClient;
 import retrofit.client.Client;
 import retrofit.converter.JacksonConverter;
 
-/**
- * Copyright 2017-2018 VoiceBase, Inc. or its affiliates. All Rights Reserved.
- * Licensed under the Apache License, Version 2.0 (the "License"). You may not
- * use this file except in compliance with the License. A copy of the License is
- * located at 
- * 
- *      http://aws.amazon.com/apache2.0/ 
- *      
- * or in the "license" file
- * accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
- * 
- * @author volker@voicebase.com
- *
- */
+
 public class LambdaTranscriptionProcessor extends LambdaProcessor
     implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponse> {
 
@@ -231,12 +233,12 @@ public class LambdaTranscriptionProcessor extends LambdaProcessor
    * <p/>
    * Right now only accepts IP addresses on the whitelist, may want to extend to
    * process CIDRs.
-   * 
+   *
    * @param input
    *          incoming event
    * @param env
    *          this function's environment
-   * 
+   *
    * @return true if passed IP check or there is no whitelist, false otherwise
    */
   boolean validateRequestSource(APIGatewayProxyRequestEvent input, Map<String, String> env) {
@@ -270,12 +272,12 @@ public class LambdaTranscriptionProcessor extends LambdaProcessor
    * Right now expects the env variable VOICEBASE_TRANSCRIPT_OUTPUT_STREAM to
    * contain a stream name. May want to extend this to also extract the stream
    * name from an ARN.
-   * 
+   *
    * @param env
    *          this function's environment
-   * 
+   *
    * @return the output stream name.
-   * 
+   *
    * @see #ENV_OUTPUT_STREAM
    */
   String getOutputStreamName(Map<String, String> env) {
