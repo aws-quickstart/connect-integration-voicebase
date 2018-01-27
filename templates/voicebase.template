@@ -6,11 +6,11 @@
             "ParameterGroups": [
             {
                 "Label": {
-                    "default": "Connect Instance"
+                    "default": "Amazon Connect Instance"
                 },
                 "Parameters": [
-                    "connectS3BucketName",
-                    "connectKinesisStreamArn"
+                    "ConnectS3BucketName",
+                    "ConnectKinesisStreamArn"
                 ]
             },
             {
@@ -18,38 +18,38 @@
                     "default": "VoiceBase API Gateway"
                 },
                 "Parameters": [
-                    "voicebaseApiToken",
-                    "voicebaseEnableKnowledgeDiscovery",
-                    "numberOfKinesisShards"
+                    "VoicebaseApiToken",
+                    "VoicebaseEnableKnowledgeDiscovery",
+                    "NumberOfKinesisShards"
                 ]
             }
             ],
             "ParameterLabels": {
-                "connectS3BucketName": {
-                    "default": "Call Recording S3 Bucket Name"
+                "ConnectS3BucketName": {
+                    "default": "Call Recording Amazon S3 Bucket Name"
                 },
-                "voicebaseApiToken": {
+                "VoicebaseApiToken": {
                     "default": "VoiceBase API Token"
                 },
-                "voicebaseEnableKnowledgeDiscovery": {
+                "VoicebaseEnableKnowledgeDiscovery": {
                     "default": "Keyword/Topic extraction"
                 },
-                "connectKinesisStreamArn": {
-                    "default": "Connect Output Stream ARN"
+                "ConnectKinesisStreamArn": {
+                    "default": "Amazon Connect CTR Output Stream ARN"
                 },
-                "numberOfKinesisShards": {
-                    "default": "VoiceBase Transcript Stream Shard Count"
+                "NumberOfKinesisShards": {
+                    "default": "VoiceBase Transcript Amazon Kinesis Data Stream Shard count"
                 }
             }
         }
     },
     "Parameters": {
-        "voicebaseApiToken": {
+        "VoicebaseApiToken": {
             "Type": "String",
             "Default": "",
-            "Description": "Enter your Voicebase API Token"
+            "Description": "Your VoiceBase API Token from the VoiceBase Developer Portal"
         },
-        "voicebaseEnableKnowledgeDiscovery": {
+        "VoicebaseEnableKnowledgeDiscovery": {
             "AllowedValues": [
                 "no",
                 "yes"
@@ -57,21 +57,21 @@
             "Type": "String",
             "Default": "no",
             "Description": "Enable keyword/topic extraction when processing media files by default"
-        },        
-        "connectS3BucketName": {
+        },
+        "ConnectS3BucketName": {
             "Type": "String",
             "Default": "",
-            "Description": "Enter the name of the bucket where your Connect instance stores call recordings."
+            "Description": "Enter the name of the Amazon S3 Bucket where your Amazon Connect instance stores call recordings."
         },
-        "connectKinesisStreamArn": {
+        "ConnectKinesisStreamArn": {
             "Type": "String",
             "Default": "",
-            "Description": "Enter the ARN of your Connect instance's output Kinesis stream."
+            "Description": "Enter the ARN of your Amazon Connect instance's CTR output Amazon Kinesis Data Stream."
         },
-        "numberOfKinesisShards": {
+        "NumberOfKinesisShards": {
             "Type": "Number",
             "Default": 1,
-            "Description": "Number of shards for transcription stream, should be at least the number of shards on Connect's output stream."
+            "Description": "Number of shards for transcription Data Stream.  This should be at least the number of shards on your Amazon Connect instance's output Amazon Kinesis Data Stream."
         }
     },
     "Rules": {
@@ -86,11 +86,11 @@
     },
     "Conditions": {
         "enableKnowledgeDiscovery": {
-           "Fn::Equals": [{ "Ref": "voicebaseEnableKnowledgeDiscovery" },"yes"]
+           "Fn::Equals": [{ "Ref": "VoicebaseEnableKnowledgeDiscovery" },"yes"]
         }
     },
     "Resources": {
-        "connectToVoicebaseRole": {
+        "ConnectToVoicebaseRole": {
             "Type": "AWS::IAM::Role",
             "Properties": {
                 "AssumeRolePolicyDocument": {
@@ -110,7 +110,7 @@
                 "ManagedPolicyArns":["arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"]
             }
         },
-        "voicebaseCallbackRole": {
+        "VoicebaseCallbackRole": {
             "Type": "AWS::IAM::Role",
             "Properties": {
                 "AssumeRolePolicyDocument": {
@@ -130,10 +130,10 @@
                 "ManagedPolicyArns":["arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"]
             }
         },
-        "voicebaseCallbackKinesisPolicy": {
+        "VoicebaseCallbackKinesisPolicy": {
             "Type": "AWS::IAM::Policy",
             "Properties": {
-                "PolicyName": "voicebaseCallbackKinesisPolicy",
+                "PolicyName": "VoicebaseCallbackKinesisPolicy",
                 "PolicyDocument": {
                     "Version": "2012-10-17",
                     "Statement": [{
@@ -146,19 +146,19 @@
                             "kinesis:PutRecord"
                         ],
                         "Resource": [{
-                            "Fn::GetAtt": ["voicebaseTranscriptionStream", "Arn"]
+                            "Fn::GetAtt": ["VoicebaseTranscriptionStream", "Arn"]
                         }]
                     }]
                 },
                 "Roles": [{
-                    "Ref": "voicebaseCallbackRole"
+                    "Ref": "VoicebaseCallbackRole"
                 }]
             }
         },
-        "voicebaseCallbackLogPolicy": {
+        "VoicebaseCallbackLogPolicy": {
             "Type": "AWS::IAM::Policy",
             "Properties": {
-                "PolicyName": "voicebaseCallbackLogPolicy",
+                "PolicyName": "VoicebaseCallbackLogPolicy",
                 "PolicyDocument": {
                     "Version": "2012-10-17",
                     "Statement": [{
@@ -188,7 +188,7 @@
                                         "Fn::Select": ["6", {
                                             "Fn::Split": [":", {
                                                 "Fn::GetAtt": [
-                                                    "voicebaseCallbackLambda",
+                                                    "VoicebaseCallbackLambda",
                                                     "Arn"
                                                 ]
                                             }]
@@ -200,14 +200,14 @@
                     ]
                 },
                 "Roles": [{
-                    "Ref": "voicebaseCallbackRole"
+                    "Ref": "VoicebaseCallbackRole"
                 }]
             }
         },
-        "connectToVoicebaseS3Policy": {
+        "ConnectToVoicebaseS3Policy": {
             "Type": "AWS::IAM::Policy",
             "Properties": {
-                "PolicyName": "connectToVoicebaseS3Policy",
+                "PolicyName": "ConnectToVoicebaseS3Policy",
                 "PolicyDocument": {
                     "Version": "2012-10-17",
                     "Statement": [{
@@ -217,7 +217,7 @@
                                 "s3:GetObjectAcl"
                             ],
                             "Resource": [{
-                                "Fn::Join": ["", ["arn:aws:s3:::",{"Ref": "connectS3BucketName" }, "/*"]]
+                                "Fn::Join": ["", ["arn:aws:s3:::",{"Ref": "ConnectS3BucketName" }, "/*"]]
                             }]
                         },
                         {
@@ -227,20 +227,20 @@
                                 "s3:GetBucketAcl"
                             ],
                             "Resource": [{
-                                   "Fn::Join": ["", ["arn:aws:s3:::",{"Ref": "connectS3BucketName" }]]
+                                   "Fn::Join": ["", ["arn:aws:s3:::",{"Ref": "ConnectS3BucketName" }]]
                                 }]
                         }
                     ]
                 },
                 "Roles": [{
-                    "Ref": "connectToVoicebaseRole"
+                    "Ref": "ConnectToVoicebaseRole"
                 }]
             }
         },
-        "connectToVoicebaseLogPolicy": {
+        "ConnectToVoicebaseLogPolicy": {
             "Type": "AWS::IAM::Policy",
             "Properties": {
-                "PolicyName": "connectToVoicebaseLogPolicy",
+                "PolicyName": "ConnectToVoicebaseLogPolicy",
                 "PolicyDocument": {
                     "Version": "2012-10-17",
                     "Statement": [{
@@ -270,7 +270,7 @@
                                         "Fn::Select": ["6", {
                                             "Fn::Split": [":", {
                                                 "Fn::GetAtt": [
-                                                    "connectToVoicebaseLambda",
+                                                    "ConnectToVoicebaseLambda",
                                                     "Arn"
                                                 ]
                                             }]
@@ -282,14 +282,14 @@
                     ]
                 },
                 "Roles": [{
-                    "Ref": "connectToVoicebaseRole"
+                    "Ref": "ConnectToVoicebaseRole"
                 }]
             }
         },
-        "connectToVoicebaseKMSPolicy": {
+        "ConnectToVoicebaseKMSPolicy": {
             "Type": "AWS::IAM::Policy",
             "Properties": {
-                "PolicyName": "connectToVoicebaseKMSPolicy",
+                "PolicyName": "ConnectToVoicebaseKMSPolicy",
                 "PolicyDocument": {
                     "Version": "2012-10-17",
                     "Statement": [{
@@ -301,14 +301,14 @@
                     }]
                 },
                 "Roles": [{
-                    "Ref": "connectToVoicebaseRole"
+                    "Ref": "ConnectToVoicebaseRole"
                 }]
             }
         },
-        "connectToVoicebaseKinesisPolicy": {
+        "ConnectToVoicebaseKinesisPolicy": {
             "Type": "AWS::IAM::Policy",
             "Properties": {
-                "PolicyName": "connectToVoicebaseKinesisPolicy",
+                "PolicyName": "ConnectToVoicebaseKinesisPolicy",
                 "PolicyDocument": {
                     "Statement": [{
                         "Action": [
@@ -320,17 +320,17 @@
                         ],
                         "Effect": "Allow",
                         "Resource": [{
-                            "Ref": "connectKinesisStreamArn"
+                            "Ref": "ConnectKinesisStreamArn"
                         }]
                     }],
                     "Version": "2012-10-17"
                 },
                 "Roles": [{
-                    "Ref": "connectToVoicebaseRole"
+                    "Ref": "ConnectToVoicebaseRole"
                 }]
             }
         },
-        "voicebaseTranscriptionStream": {
+        "VoicebaseTranscriptionStream": {
             "Type": "AWS::Kinesis::Stream",
             "Properties": {
                 "ShardCount": {
@@ -339,20 +339,20 @@
             }
 
         },
-        "voicebaseCallbackApi": {
+        "VoicebaseCallbackApi": {
             "Type": "AWS::ApiGateway::RestApi",
             "Properties": {
                 "Name": {"Fn::Join":["-",[{"Ref":"AWS::StackName"},"VoiceBaseCallbackApi",{"Fn::Select": [0,{"Fn::Split": ["-", {"Fn::Select": [2,{"Fn::Split":["/",{"Ref":"AWS::StackId"}]}]}]}]}]]}
             }
         },
-        "connectToVoicebaseLambda": {
+        "ConnectToVoicebaseLambda": {
             "Type": "AWS::Lambda::Function",
             "Properties": {
                 "MemorySize": 256,
                 "Handler": "com.voicebase.gateways.lily.LambdaRecordProcessor::handleRequest",
                 "Role": {
                     "Fn::GetAtt": [
-                        "connectToVoicebaseRole",
+                        "ConnectToVoicebaseRole",
                         "Arn"
                     ]
                 },
@@ -363,14 +363,14 @@
                 "Environment": {
                     "Variables": {
                         "VOICEBASE_API_TOKEN": {
-                            "Ref": "voicebaseApiToken"
+                            "Ref": "VoicebaseApiToken"
                         },
                         "VOICEBASE_KNOWLEDGE_DISCOVERY_ENABLE": {
-                            "Fn::If": ["enableKnowledgeDiscovery","true","false"]      
-                        },                        
+                            "Fn::If": ["enableKnowledgeDiscovery","true","false"]
+                        },
                         "VOICEBASE_CALLBACK_URL": {
                             "Fn::Join": ["", ["https://", {
-                                "Ref": "voicebaseCallbackApi"
+                                "Ref": "VoicebaseCallbackApi"
                             }, ".execute-api.", {
                                 "Ref": "AWS::Region"
                             }, ".amazonaws.com/public/outgoing"]]
@@ -381,14 +381,14 @@
                 "Timeout": "90"
             }
         },
-        "voicebaseCallbackLambda": {
+        "VoicebaseCallbackLambda": {
             "Type": "AWS::Lambda::Function",
             "Properties": {
                 "MemorySize": 256,
                 "Handler": "com.voicebase.gateways.lily.LambdaTranscriptionProcessor::handleRequest",
                 "Role": {
                     "Fn::GetAtt": [
-                        "voicebaseCallbackRole",
+                        "VoicebaseCallbackRole",
                         "Arn"
                     ]
                 },
@@ -399,7 +399,7 @@
                 "Environment": {
                     "Variables": {
                         "VOICEBASE_TRANSCRIPT_OUTPUT_STREAM": {
-                            "Ref": "voicebaseTranscriptionStream"
+                            "Ref": "VoicebaseTranscriptionStream"
                         }
                     }
                 },
@@ -407,27 +407,27 @@
                 "Timeout": "90"
             }
         },
-        "connectToVoicebaseLambdaMapping": {
+        "ConnectToVoicebaseLambdaMapping": {
             "Type": "AWS::Lambda::EventSourceMapping",
-            "DependsOn": ["connectToVoicebaseKinesisPolicy","connectToVoicebaseLogPolicy"],
+            "DependsOn": ["ConnectToVoicebaseKinesisPolicy","ConnectToVoicebaseLogPolicy"],
             "Properties": {
                 "BatchSize": 10,
                 "Enabled": true,
                 "EventSourceArn": {
-                    "Ref": "connectKinesisStreamArn"
+                    "Ref": "ConnectKinesisStreamArn"
                 },
                 "FunctionName": {
-                    "Ref": "connectToVoicebaseLambda"
+                    "Ref": "ConnectToVoicebaseLambda"
                 },
                 "StartingPosition": "LATEST"
             }
         },
-        "voicebaseCallbackLambdaPermission": {
+        "VoicebaseCallbackLambdaPermission": {
             "Type": "AWS::Lambda::Permission",
             "Properties": {
                 "Action": "lambda:invokeFunction",
                 "FunctionName": {
-                    "Fn::GetAtt": ["voicebaseCallbackLambda", "Arn"]
+                    "Fn::GetAtt": ["VoicebaseCallbackLambda", "Arn"]
                 },
                 "Principal": "apigateway.amazonaws.com",
                 "SourceArn": {
@@ -436,16 +436,16 @@
                     }, ":", {
                         "Ref": "AWS::AccountId"
                     }, ":", {
-                        "Ref": "voicebaseCallbackApi"
+                        "Ref": "VoicebaseCallbackApi"
                     }, "/*"]]
                 }
             }
         },
-        "voicebaseCallbackStage": {
+        "VoicebaseCallbackStage": {
             "Type": "AWS::ApiGateway::Stage",
             "Properties": {
                 "DeploymentId": {
-                    "Ref": "voicebaseCallbackDeployment"
+                    "Ref": "VoicebaseCallbackDeployment"
                 },
                 "MethodSettings": [{
                     "DataTraceEnabled": true,
@@ -453,35 +453,35 @@
                     "ResourcePath": "/*"
                 }],
                 "RestApiId": {
-                    "Ref": "voicebaseCallbackApi"
+                    "Ref": "VoicebaseCallbackApi"
                 },
                 "StageName": "latest"
             }
         },
-        "voicebaseCallbackDeployment": {
+        "VoicebaseCallbackDeployment": {
             "Type": "AWS::ApiGateway::Deployment",
-            "DependsOn": ["voicebaseCallbackMethod"],
+            "DependsOn": ["VoicebaseCallbackMethod"],
             "Properties": {
                 "RestApiId": {
-                    "Ref": "voicebaseCallbackApi"
+                    "Ref": "VoicebaseCallbackApi"
                 },
                 "StageName": "public"
             }
         },
-        "voicebaseCallbackResource": {
+        "VoicebaseCallbackResource": {
             "Type": "AWS::ApiGateway::Resource",
             "Properties": {
                 "RestApiId": {
-                    "Ref": "voicebaseCallbackApi"
+                    "Ref": "VoicebaseCallbackApi"
                 },
                 "ParentId": {
-                    "Fn::GetAtt": ["voicebaseCallbackApi", "RootResourceId"]
+                    "Fn::GetAtt": ["VoicebaseCallbackApi", "RootResourceId"]
                 },
                 "PathPart": "outgoing"
             }
         },
-        "voicebaseCallbackMethod": {
-            "DependsOn": "voicebaseCallbackLambdaPermission",
+        "VoicebaseCallbackMethod": {
+            "DependsOn": "VoicebaseCallbackLambdaPermission",
             "Type": "AWS::ApiGateway::Method",
             "Properties": {
                 "AuthorizationType": "NONE",
@@ -493,7 +493,7 @@
                         "Fn::Join": ["", ["arn:aws:apigateway:", {
                             "Ref": "AWS::Region"
                         }, ":lambda:path/2015-03-31/functions/", {
-                            "Fn::GetAtt": ["voicebaseCallbackLambda", "Arn"]
+                            "Fn::GetAtt": ["VoicebaseCallbackLambda", "Arn"]
                         }, "/invocations"]]
                     },
                     "IntegrationResponses": [{
@@ -513,10 +513,10 @@
                     "method.request.querystring.name": false
                 },
                 "ResourceId": {
-                    "Ref": "voicebaseCallbackResource"
+                    "Ref": "VoicebaseCallbackResource"
                 },
                 "RestApiId": {
-                    "Ref": "voicebaseCallbackApi"
+                    "Ref": "VoicebaseCallbackApi"
                 },
                 "MethodResponses": [{
                     "StatusCode": 200
@@ -525,10 +525,10 @@
         }
     },
     "Outputs": {
-        "voicebaseTranscriptionStream": {
+        "VoicebaseTranscriptionStream": {
             "Description": "VoiceBase Transcription Stream.  Transcription delivered from VoiceBase.",
             "Value": {
-                "Fn::GetAtt": "voicebaseTranscriptionStream.Arn"
+                "Fn::GetAtt": "VoicebaseTranscriptionStream.Arn"
             }
         }
     }
