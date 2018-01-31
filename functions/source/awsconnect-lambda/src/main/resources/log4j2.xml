@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <Appenders>
+        <Console name="default" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{ISO8601} [%t] %-5level %c{1.} - %msg%n" />
+        </Console>
+    </Appenders>
+    <Loggers>
+        <Logger name="com.voicebase.gateways" level="info" additivity="false">
+            <AppenderRef ref="default" />
+        </Logger>
+        <Root level="error">
+            <AppenderRef ref="default" />
+        </Root>
+    </Loggers>
+</Configuration>
