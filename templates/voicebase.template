@@ -334,7 +334,7 @@
             "Type": "AWS::Kinesis::Stream",
             "Properties": {
                 "ShardCount": {
-                    "Ref": "numberOfKinesisShards"
+                    "Ref": "NumberOfKinesisShards"
                 }
             }
 
@@ -349,7 +349,7 @@
             "Type": "AWS::Lambda::Function",
             "Properties": {
                 "MemorySize": 256,
-                "Handler": "com.voicebase.gateways.lily.LambdaRecordProcessor::handleRequest",
+                "Handler": "com.voicebase.gateways.awsconnect.forward.LambdaRecordProcessor::handleRequest",
                 "Role": {
                     "Fn::GetAtt": [
                         "ConnectToVoicebaseRole",
@@ -358,7 +358,7 @@
                 },
                 "Code": {
                     "S3Bucket": "static.dev.voicebase.com",
-                    "S3Key": "aws-connect-lambda.jar"
+                    "S3Key": "awsconnect-lambda-voicebase-forward.jar"
                 },
                 "Environment": {
                     "Variables": {
@@ -385,7 +385,7 @@
             "Type": "AWS::Lambda::Function",
             "Properties": {
                 "MemorySize": 256,
-                "Handler": "com.voicebase.gateways.lily.LambdaTranscriptionProcessor::handleRequest",
+                "Handler": "com.voicebase.gateways.awsconnect.response.LambdaTranscriptionProcessor::handleRequest",
                 "Role": {
                     "Fn::GetAtt": [
                         "VoicebaseCallbackRole",
@@ -394,7 +394,7 @@
                 },
                 "Code": {
                     "S3Bucket": "static.dev.voicebase.com",
-                    "S3Key": "aws-connect-lambda.jar"
+                    "S3Key": "awsconnect-lambda-voicebase-response.jar"
                 },
                 "Environment": {
                     "Variables": {
