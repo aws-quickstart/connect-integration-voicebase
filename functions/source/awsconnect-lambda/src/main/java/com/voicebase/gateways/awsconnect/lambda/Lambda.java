@@ -1,17 +1,17 @@
 /**
- * Copyright 2017-2018 VoiceBase, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2016-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
  * use this file except in compliance with the License. A copy of the License is
- * located at 
- * 
- *      http://aws.amazon.com/apache2.0/ 
- *      
+ * located at
+ *
+ *      http://aws.amazon.com/apache2.0/
+ *
  * or in the "license" file
  * accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
  * License for the specific language governing permissions and limitations under
  * the License.
- * 
+ *
  * @author volker@voicebase.com
  *
  */
@@ -27,7 +27,7 @@ import com.google.common.collect.Lists;
  * Attribute names provided by Amazon Connect to configure VoiceBase API
  * requests, environment variables names and some defaults to be use in the
  * Lambda functions.
- * 
+ *
  * @author Volker Kueffel <volker@voicebase.com>
  *
  */

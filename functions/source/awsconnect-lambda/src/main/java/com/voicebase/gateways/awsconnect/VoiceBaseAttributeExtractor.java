@@ -1,11 +1,11 @@
 /**
- * Copyright 2017-2018 VoiceBase, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2016-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
  * use this file except in compliance with the License. A copy of the License is
- * located at 
- * 
- *      http://aws.amazon.com/apache2.0/ 
- *      
+ * located at
+ *
+ *      http://aws.amazon.com/apache2.0/
+ *
  * or in the "license" file
  * accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
@@ -35,7 +35,7 @@ import com.voicebase.gateways.awsconnect.lambda.Lambda;
 
 /**
  * Utility class to extract VoiceBase settings from Amazon Connect attributes.
- * 
+ *
  * @author Volker Kueffel <volker@voicebase.com>
  *
  */
@@ -48,14 +48,14 @@ public final class VoiceBaseAttributeExtractor extends MapConfiguration {
    * <p/>
    * Will either return a list of strings or null, never an empty list. Empty
    * list entries are skipped. All entries are trimmed.
-   * 
+   *
    * @param attr
    *          configuration
    * @param key
    *          configuration key
-   * 
+   *
    * @return list of strings extracted from parameter or null.
-   * 
+   *
    * @see KinesisRecordProcessor#Lambda.VB_CONFIG_LIST_SEPARATOR
    */
   public static List<String> getStringParameterList(ImmutableConfiguration attr, String key) {
@@ -89,15 +89,15 @@ public final class VoiceBaseAttributeExtractor extends MapConfiguration {
    * Get string parameter from configuration.
    * <p/>
    * Result string is trimmed.
-   * 
+   *
    * @param attr
    *          configuration
    * @param key
    *          configuration key
-   * 
+   *
    * @return parameter value or null if no such key or value is empty or the
    *         pre-defined null-string
-   * 
+   *
    * @see KinesisRecordProcessor#Lambda.VB_CONFIG_NULL_STRING
    */
   public static String getStringParameter(ImmutableConfiguration attr, String key) {
@@ -133,7 +133,7 @@ public final class VoiceBaseAttributeExtractor extends MapConfiguration {
     allLevels.addAll(Lists.newArrayList(levels));
     return StringUtils.join(allLevels, Lambda.VB_CONFIG_DELIMITER);
   }
-  
+
   @SuppressWarnings("unchecked")
   public static String getS3RecordingLocation(Map<String, Object> dataAsMap) {
     if (dataAsMap == null) {
