@@ -10,11 +10,6 @@
 
     <description>AWSConnect-Voicebase Gateway</description>
 
-    <scm>
-        <developerConnection>scm:git:ssh://git@bitbucket.com/voicebase/voicebase-lily-gateway.git</developerConnection>
-        <url>https://bitbucket.org/voicebase/voicebase-email-gateway</url>
-    </scm>
-
     <modules>
         <module>awsconnect-lambda</module>
         <module>awsconnect-lambda-voicebase-forward</module>
@@ -40,7 +35,6 @@
         <springboot.version>1.5.7.RELEASE</springboot.version>
         <voicebaseapimodel.version>2.104.0-dev-SNAPSHOT</voicebaseapimodel.version>
     </properties>
-
 
 
     <dependencyManagement>
