@@ -50,11 +50,16 @@
             <artifactId>aws-java-sdk-s3</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+        </dependency>
+
     </dependencies>
 
 
     <build>
-        <finalName>awsconnect-lambda-voicebase-forward</finalName>
+        <finalName>lambda</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

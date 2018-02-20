@@ -52,7 +52,7 @@
 
 
     <build>
-        <finalName>awsconnect-lambda-voicebase-response</finalName>
+        <finalName>lambda</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
