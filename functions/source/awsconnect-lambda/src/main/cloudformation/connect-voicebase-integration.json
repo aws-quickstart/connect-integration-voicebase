@@ -4,6 +4,7 @@
     "Metadata": {
         "AWS::CloudFormation::Interface": {
             "ParameterGroups": [
+            
             {
                 "Label": {
                     "default": "Amazon Connect Instance"
@@ -22,6 +23,15 @@
                     "VoicebaseEnableKnowledgeDiscovery",
                     "NumberOfKinesisShards"
                 ]
+            },
+            {
+                "Label": {
+                    "default": "Amazon Connect Quick Start"
+                },
+                "Parameters": [
+                    "QSS3BucketName",
+                    "QSS3KeyPrefix"
+                ]
             }
             ],
             "ParameterLabels": {
@@ -39,14 +49,33 @@
                 },
                 "NumberOfKinesisShards": {
                     "default": "VoiceBase Transcript Amazon Kinesis Data Stream Shard count"
+                },
+                "QSS3BucketName": {
+                    "default":"Quick Start S3 Bucket Name"
+                },
+                "QSS3KeyPrefix": {
+                    "default":"Quick Start S3 Key Prefix"
                 }
             }
         }
     },
     "Parameters": {
+        "QSS3BucketName": {
+            "Type": "String",
+            "Default": "quickstart-reference",
+            "Description": "S3 bucket name for the Quick Start assets. This string can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-)",
+            "AllowedPattern":"^[0-9a-zA-Z]+([0-9a-zA-Z-.]*[0-9a-zA-Z])*$",
+            "ConstraintDescription":"Quick Start bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-)"
+        },
+        "QSS3KeyPrefix": {
+            "Type": "String",
+            "Default": "connect/integration/voicebase/latest/",
+            "Description": "S3 key prefix for the Quick Start assets. Quick Start key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/)",
+            "AllowedPattern":"^[0-9a-zA-Z-/]*$",
+            "ConstraintDescription":"Quick Start key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/)"
+        },
         "VoicebaseApiToken": {
             "Type": "String",
-            "Default": "",
             "Description": "Your VoiceBase API Token from the VoiceBase Developer Portal"
         },
         "VoicebaseEnableKnowledgeDiscovery": {
@@ -60,12 +89,11 @@
         },
         "ConnectS3BucketName": {
             "Type": "String",
-            "Default": "",
+            "AllowedPattern":"^[0-9a-zA-Z]+([0-9a-zA-Z-.]*[0-9a-zA-Z])*$",
             "Description": "Enter the name of the Amazon S3 Bucket where your Amazon Connect instance stores call recordings."
         },
         "ConnectKinesisStreamArn": {
             "Type": "String",
-            "Default": "",
             "Description": "Enter the ARN of your Amazon Connect instance's CTR output Amazon Kinesis Data Stream."
         },
         "NumberOfKinesisShards": {
@@ -357,8 +385,8 @@
                     ]
                 },
                 "Code": {
-                    "S3Bucket": "static.dev.voicebase.com",
-                    "S3Key": "awsconnect-lambda-voicebase-forward.jar"
+                    "S3Bucket": {"Ref":"QSS3BucketName"},
+                    "S3Key": {"Fn::Join": ["", [{"Ref":"QSS3KeyPrefix"},"functions/packages/awsconnect-lambda-voicebase-forward/lambda.jar"]]}
                 },
                 "Environment": {
                     "Variables": {
@@ -393,8 +421,8 @@
                     ]
                 },
                 "Code": {
-                    "S3Bucket": "static.dev.voicebase.com",
-                    "S3Key": "awsconnect-lambda-voicebase-response.jar"
+                    "S3Bucket": {"Ref":"QSS3BucketName"},
+                    "S3Key": {"Fn::Join": ["", [{"Ref":"QSS3KeyPrefix"},"functions/packages/awsconnect-lambda-voicebase-response/lambda.jar"]]}
                 },
                 "Environment": {
                     "Variables": {

@@ -50,6 +50,11 @@
             <artifactId>aws-java-sdk-s3</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+        </dependency>
+
     </dependencies>
 
 
