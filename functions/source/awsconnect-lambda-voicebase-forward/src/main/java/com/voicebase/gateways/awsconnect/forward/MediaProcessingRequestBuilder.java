@@ -2,10 +2,10 @@
  * Copyright 2016-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
  * use this file except in compliance with the License. A copy of the License is
- * located at
- *
- *      http://aws.amazon.com/apache2.0/
- *
+ * located at 
+ * 
+ *      http://aws.amazon.com/apache2.0/ 
+ *      
  * or in the "license" file
  * accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
@@ -47,6 +47,8 @@ import com.voicebase.api.model.VbIngestConfiguration.VbIngestConfigurationBuilde
 import com.voicebase.api.model.VbKnowledgeConfiguration;
 import com.voicebase.api.model.VbKnowledgeConfiguration.VbKnowledgeConfigurationBuilder;
 import com.voicebase.api.model.VbMetadata;
+import com.voicebase.api.model.VbMetricGroupConfiguration;
+import com.voicebase.api.model.VbMetricGroupConfiguration.VbMetricGroupConfigurationBuilder;
 import com.voicebase.api.model.VbParameter;
 import com.voicebase.api.model.VbPredictionConfiguration;
 import com.voicebase.api.model.VbPredictionConfiguration.VbPredictionConfigurationBuilder;
@@ -69,7 +71,7 @@ import com.voicebase.gateways.awsconnect.lambda.Lambda;
 import com.voicebase.sdk.v3.MediaProcessingRequest;
 
 /**
- *
+ * 
  * @author Volker Kueffel <volker@voicebase.com>
  *
  */
@@ -77,18 +79,20 @@ public class MediaProcessingRequestBuilder {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MediaProcessingRequestBuilder.class);
 
-  private static final String SPEECH_FEATURE_VOICE = "voiceFeatures";
-  private static final String REDACTION_REPLACEMENT = "[redacted]";
-  private static final Float REDACTION_GAIN = new Float(0.5f);
-  private static final Integer REDACTION_TONE = new Integer(270);
-  private static final String DETECTOR_NAME_PCI = "PCI";
-  private static final String DETECTOR_PCI_PARAM_DETECTION_LEVEL_VALUE = "probableNumbers";
-  private static final String DETECTOR_PCI_PARAM_DETECTION_LEVEL_NAME = "detectionLevel";
+  static final String SPEECH_FEATURE_VOICE = "voiceFeatures";
+  static final String SPEECH_FEATURE_ADVANCED_PUNCTUATION = "advancedPunctuation";
+  static final String REDACTION_REPLACEMENT = "[redacted]";
+  static final Float REDACTION_GAIN = new Float(0.5f);
+  static final Integer REDACTION_TONE = new Integer(270);
+  static final String DETECTOR_NAME_PCI = "PCI";
+  static final String DETECTOR_PCI_PARAM_DETECTION_LEVEL_VALUE = "probableNumbers";
+  static final String DETECTOR_PCI_PARAM_DETECTION_LEVEL_NAME = "detectionLevel";
 
   private Map<String, Object> awsInputData;
 
   private boolean predictionsEnabled = true;
   private boolean knowledgeDiscoveryEnabled = false;
+  private boolean advancedPunctuationEnabled = true;
   private boolean configureSpeakers = true;
 
   private String leftSpeakerName;
@@ -125,6 +129,19 @@ public class MediaProcessingRequestBuilder {
 
   public void setKnowledgeDiscoveryEnabled(boolean knowledgeEnabled) {
     this.knowledgeDiscoveryEnabled = knowledgeEnabled;
+  }
+
+  public boolean isAdvancedPunctuationEnabled() {
+    return advancedPunctuationEnabled;
+  }
+
+  public void setAdvancedPunctuationEnabled(boolean advancedPunctuationEnabled) {
+    this.advancedPunctuationEnabled = advancedPunctuationEnabled;
+  }
+
+  public MediaProcessingRequestBuilder withAdvancedPunctuationEnabled(boolean advancedPunctuationEnabled) {
+    setAdvancedPunctuationEnabled(advancedPunctuationEnabled);
+    return this;
   }
 
   public MediaProcessingRequestBuilder withKnowledgeDiscoveryEnabled(boolean knowledgeEnabled) {
@@ -206,8 +223,8 @@ public class MediaProcessingRequestBuilder {
    * <p/>
    * NOTE: As a side effect some of the attributes in the map are rewritten with
    * expanded lists.
-   *
-   *
+   * 
+   * 
    * @return VB configuration
    */
   private VbConfiguration createConfiguration() {
@@ -220,6 +237,12 @@ public class MediaProcessingRequestBuilder {
     VbPredictionConfigurationBuilder predictionConfigBuilder = VbPredictionConfiguration.builder();
     VbKnowledgeConfigurationBuilder knowledgeConfigBuilder = VbKnowledgeConfiguration.builder()
         .enableDiscovery(Boolean.valueOf(knowledgeDiscoveryEnabled));
+    
+    ArrayList<String>speechFeatures=new ArrayList<>();
+    speechConfigBuilder.features(speechFeatures);
+    if (advancedPunctuationEnabled) {
+      speechFeatures.add(SPEECH_FEATURE_ADVANCED_PUNCTUATION);
+    }
 
     // callbacks
     List<VbIncludeTypeEnum> includes = new ArrayList<>();
@@ -263,8 +286,6 @@ public class MediaProcessingRequestBuilder {
 
       }
 
-      speechConfigBuilder.language(getStringParameter(vbAttrs, Lambda.VB_ATTR_LANGUAGE));
-
       String priorityString = getStringParameter(vbAttrs, Lambda.VB_ATTR_PRIORIY);
       try {
         VbPriorityEnum p = VbPriorityEnum.fromValue(priorityString);
@@ -295,7 +316,6 @@ public class MediaProcessingRequestBuilder {
         knowledgeConfigBuilder.enableDiscovery(Boolean.valueOf(knowledgeDiscoveryEnabledAttr));
       }
 
-
       // phrase spotting
       ImmutableConfiguration keywordAttr = vbAttrs.immutableSubset(Lambda.VB_ATTR_KEYWORDS);
 
@@ -310,12 +330,17 @@ public class MediaProcessingRequestBuilder {
         configBuilder.spotting(VbSpottingConfiguration.builder().groups(spottingGroups).build());
 
         // overwrite metadata
-        attributes.put(getVoicebaseAttributeName(Lambda.VB_ATTR_KEYWORDS, Lambda.VB_ATTR_KEYWORDS_GROUPS),
-            groups);
+        attributes.put(getVoicebaseAttributeName(Lambda.VB_ATTR_KEYWORDS, Lambda.VB_ATTR_KEYWORDS_GROUPS), groups);
       }
+
+      
+      speechConfigBuilder.language(getStringParameter(vbAttrs, Lambda.VB_ATTR_LANGUAGE));
 
       // classifiers
       if (predictionsEnabled) {
+        
+        // voice features only have an effect if predictions are on
+        speechFeatures.add(SPEECH_FEATURE_VOICE);
 
         ImmutableConfiguration classificationAttr = vbAttrs.immutableSubset(Lambda.VB_ATTR_CLASSIFIER);
         Set<String> classifierNames = getStringParameterSet(classificationAttr, Lambda.VB_ATTR_CLASSIFIER_NAMES);
@@ -326,13 +351,14 @@ public class MediaProcessingRequestBuilder {
             classifierConfigs.add(VbClassifierConfiguration.builder().classifierName(classifier).build());
           }
 
-          speechConfigBuilder.features(Collections.singletonList(SPEECH_FEATURE_VOICE));
           predictionConfigBuilder.classifiers(classifierConfigs);
 
           attributes.put(getVoicebaseAttributeName(Lambda.VB_ATTR_CLASSIFIER, Lambda.VB_ATTR_CLASSIFIER_NAMES),
               classifierNames);
         }
       }
+
+      
 
       // custom vocabularies
       List<VbVocabularyConfiguration> vocabs = new ArrayList<>();
@@ -350,8 +376,7 @@ public class MediaProcessingRequestBuilder {
         vocabs.add(vocabularyConfigBuilder.build());
 
         // overwrite metadata
-        attributes.put(getVoicebaseAttributeName(Lambda.VB_ATTR_VOCABULARY, Lambda.VB_ATTR_VOCABULARY_TERMS),
-            terms);
+        attributes.put(getVoicebaseAttributeName(Lambda.VB_ATTR_VOCABULARY, Lambda.VB_ATTR_VOCABULARY_TERMS), terms);
       }
 
       Set<String> vocabNames = getStringParameterSet(vocabAttr, Lambda.VB_ATTR_VOCABULARY_NAMES);
@@ -367,6 +392,19 @@ public class MediaProcessingRequestBuilder {
 
       if (!vocabs.isEmpty()) {
         configBuilder.vocabularies(vocabs);
+      }
+      
+      // metrics
+      ImmutableConfiguration metricsAttrs = vbAttrs.immutableSubset(Lambda.VB_ATTR_METRICS);
+      Set<String> metricGroups=getStringParameterSet(metricsAttrs, Lambda.VB_ATTR_METRICS_GROUPS);
+      if (metricGroups!=null && !metricGroups.isEmpty()) {
+        List<VbMetricGroupConfiguration> metricsConfs=new ArrayList<>();
+        for (String metricGroupName : metricGroups) {
+          VbMetricGroupConfigurationBuilder metricConfigBuilder=VbMetricGroupConfiguration.builder();
+          metricConfigBuilder.metricGroupName(metricGroupName); 
+          metricsConfs.add(metricConfigBuilder.build());
+        }
+        configBuilder.metrics(metricsConfs);
       }
 
       // speakers

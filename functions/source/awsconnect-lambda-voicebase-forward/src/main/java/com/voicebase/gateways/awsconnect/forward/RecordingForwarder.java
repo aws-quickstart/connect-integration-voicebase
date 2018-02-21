@@ -2,10 +2,10 @@
  * Copyright 2016-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not
  * use this file except in compliance with the License. A copy of the License is
- * located at
- *
- *      http://aws.amazon.com/apache2.0/
- *
+ * located at 
+ * 
+ *      http://aws.amazon.com/apache2.0/ 
+ *      
  * or in the "license" file
  * accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
@@ -44,7 +44,7 @@ import com.voicebase.sdk.v3.ServiceFactory;
 import com.voicebase.sdk.v3.VoiceBaseClient;
 
 /**
- *
+ * 
  * @author Volker Kueffel <volker@voicebase.com>
  *
  */
@@ -56,6 +56,7 @@ public class RecordingForwarder {
   private boolean configureSpeakers;
   private boolean predictionsEnabled;
   private boolean knowledgeEnabled;
+  private boolean advancedPunctuationEnabld;
   private String leftSpeakerName;
   private String rightSpeakerName;
   private long mediaUrlTtl;
@@ -86,8 +87,8 @@ public class RecordingForwarder {
 
       MediaProcessingRequestBuilder builder = new MediaProcessingRequestBuilder().withCallbackProvider(callbackProvider)
           .withConfigureSpeakers(configureSpeakers).withPredictionsEnabled(predictionsEnabled)
-          .withKnowledgeDiscoveryEnabled(knowledgeEnabled).withAwsInputData(dataAsMap)
-          .withLeftSpeakerName(leftSpeakerName).withRightSpeakerName(rightSpeakerName);
+          .withKnowledgeDiscoveryEnabled(knowledgeEnabled).withAdvancedPunctuationEnabled(advancedPunctuationEnabld)
+          .withAwsInputData(dataAsMap).withLeftSpeakerName(leftSpeakerName).withRightSpeakerName(rightSpeakerName);
 
       MediaProcessingRequest req = builder.build();
 
@@ -113,16 +114,16 @@ public class RecordingForwarder {
 
   /**
    * Create a pre-signed URL for given S3 bucket, object key and time to live.
-   *
+   * 
    * @param bucketName
    *          S3 bucket containing the object
    * @param objectKey
    *          S3 object key
    * @param ttl
    *          time to live for the pre-signed URL.
-   *
+   * 
    * @return pre-signed URL
-   *
+   * 
    * @throws SdkClientException
    *           if pre-signing the URL failed.
    * @throws IllegalArgumentException
@@ -156,6 +157,8 @@ public class RecordingForwarder {
     predictionsEnabled = getBooleanSetting(env, Lambda.ENV_ENABLE_PREDICTIONS, true);
     knowledgeEnabled = getBooleanSetting(env, Lambda.ENV_ENABLE_KNOWLEDGE_DISCOVERY,
         Lambda.DEFAULT_ENABLE_KNOWLEDGE_DISCOVERY);
+    advancedPunctuationEnabld = getBooleanSetting(env, Lambda.ENV_ENABLE_ADVANCED_PUNCTUATION,
+        Lambda.DEFAULT_ENABLE_ADVANCED_PUNCTUATION);
     leftSpeakerName = getStringSetting(env, Lambda.ENV_LEFT_SPEAKER, Lambda.DEFAULT_LEFT_SPEAKER_NAME);
     rightSpeakerName = getStringSetting(env, Lambda.ENV_RIGHT_SPEAKER, Lambda.DEFAULT_RIGHT_SPEAKER_NAME);
     mediaUrlTtl = getLongSetting(env, Lambda.ENV_MEDIA_URL_TTL_MILLIS, Lambda.DEFAULT_MEDIA_URL_TTL_MILLIS);
