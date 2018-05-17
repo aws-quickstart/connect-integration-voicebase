@@ -79,9 +79,11 @@ public class VoiceBaseClient {
 
       result = mediaService.processMedia(authHeaderValue(token), request.getConfiguration(), request.getMetadata(),
           file);
-    } else {
+    } else if (request.getMediaUrl()!=null){
       result = mediaService.processMedia(authHeaderValue(token), request.getConfiguration(), request.getMetadata(),
           request.getMediaUrl());
+    } else {
+      throw new IllegalArgumentException("Media information missing.");
     }
 
     LOGGER.trace("Voicebase response: {}", result);
@@ -106,6 +108,9 @@ public class VoiceBaseClient {
       try {
         mediaId = uploadMedia(token, request);
         success = true;
+      } catch (IllegalArgumentException e) {
+        LOGGER.error("Invalid argument.",e);
+        throw e;
       } catch (Exception e) {
         // retry
         if (attempt < 1 + retryAttempts) {

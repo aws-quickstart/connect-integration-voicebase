@@ -529,6 +529,50 @@
                 }
             }
         },
+        "VoicebaseTokenValidationLambda": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "MemorySize": 256,
+                "Handler": "com.voicebase.gateways.lambda.LambdaVoicebaseApiTokenValidator::handleRequest",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "ConnectToVoicebaseRole",
+                        "Arn"
+                    ]
+                },
+                "Code": {
+                    "S3Bucket": {
+                        "Ref": "QSS3BucketName"
+                    },
+                    "S3Key": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                {
+                                    "Ref": "QSS3KeyPrefix"
+                                },
+                                "functions/packages/voicebase-lambda-auth-validation/lambda.jar"
+                            ]
+                        ]
+                    }
+                },
+                "Environment": {
+                    "Variables": {
+                        "VOICEBASE_API_TOKEN": {
+                            "Ref": "VoicebaseApiToken"
+                        }
+                    }
+                },
+                "Runtime": "java8",
+                "Timeout": "60"
+            }
+        },
+        "VoicebaseTokenValidation": {
+          "Type": "Custom::VoicebaseTokenValidation",
+          "Properties": {
+            "ServiceToken": { "Fn::GetAtt" : ["VoicebaseTokenValidationLambda", "Arn"] }
+          }
+        },
         "VoicebaseCallbackApi": {
             "Type": "AWS::ApiGateway::RestApi",
             "Properties": {

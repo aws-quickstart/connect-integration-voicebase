@@ -21,6 +21,7 @@ import java.util.TimeZone;
 import org.apache.http.impl.client.HttpClientBuilder;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.voicebase.sdk.util.ApiErrorHandler;
 import com.voicebase.sdk.util.NoAuthHeaderHttpClientRedirectStrategy;
 import com.voicebase.sdk.util.RetrofitToSlf4jLogger;
 
@@ -42,9 +43,9 @@ public class ServiceFactory {
     }
 
     RetrofitToSlf4jLogger log = new RetrofitToSlf4jLogger(MediaService.class);
-
+    
     RestAdapter.Builder retrofit = new RestAdapter.Builder().setEndpoint(endpointUrl).setClient(apacheClient())
-        .setConverter(new JacksonConverter(objectMapper())).setLog(log);
+        .setConverter(new JacksonConverter(objectMapper())).setLog(log).setErrorHandler(new ApiErrorHandler());
 
     if (logLevel != null) {
       LogLevel clientLogLevel = LogLevel.valueOf(logLevel);
@@ -64,7 +65,7 @@ public class ServiceFactory {
     RetrofitToSlf4jLogger log = new RetrofitToSlf4jLogger(VoiceBaseService.class);
 
     RestAdapter.Builder retrofit = new RestAdapter.Builder().setEndpoint(endpointUrl).setClient(apacheClient())
-        .setConverter(new JacksonConverter(objectMapper())).setLog(log);
+        .setConverter(new JacksonConverter(objectMapper())).setLog(log).setErrorHandler(new ApiErrorHandler());
 
     if (logLevel != null) {
       LogLevel clientLogLevel = LogLevel.valueOf(logLevel);
