@@ -5,7 +5,7 @@
 
   <groupId>com.voicebase.awsconnect</groupId>
   <artifactId>awsconnect-parent</artifactId>
-  <version>0.10.0-SNAPSHOT</version>
+  <version>0.10.1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <description>AWSConnect-Voicebase Gateway</description>
@@ -27,7 +27,7 @@
     <maven.compiler.source>${java.version}</maven.compiler.source>
     <maven.compiler.target>${java.version}</maven.compiler.target>
 
-    <jackson2.version>2.9.5</jackson2.version>
+    <jackson2.version>2.9.7</jackson2.version>
     <awssdk.version>1.11.198</awssdk.version>
     <retrofit.version>1.9.0</retrofit.version>
     <httpclient.version>4.5.3</httpclient.version>
