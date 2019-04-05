@@ -1,5 +1,5 @@
 /**
- * Copyright 2016-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved. Licensed under the
+ * Copyright 2016-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved. Licensed under the
  * Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with
  * the License. A copy of the License is located at
  *
@@ -11,11 +11,14 @@
  */
 package com.voicebase.sdk.util;
 
+import com.voicebase.v3client.datamodel.VbErrorResponse;
+
 /** @author Volker Kueffel <volker@voicebase.com> */
 public class ApiException extends RuntimeException {
 
   private static final long serialVersionUID = 1L;
   private int statusCode;
+  private VbErrorResponse error;
 
   public ApiException() {
     super();
@@ -49,5 +52,22 @@ public class ApiException extends RuntimeException {
   public ApiException withStatusCode(int statusCode) {
     setStatusCode(statusCode);
     return this;
+  }
+
+  public VbErrorResponse getError() {
+    return error;
+  }
+
+  public void setError(VbErrorResponse error) {
+    this.error = error;
+  }
+
+  public ApiException withError(VbErrorResponse error) {
+    setError(error);
+    return this;
+  }
+
+  public boolean isRetryable() {
+    return statusCode != 400;
   }
 }

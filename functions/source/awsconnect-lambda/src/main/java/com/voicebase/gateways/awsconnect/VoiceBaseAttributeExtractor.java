@@ -1,5 +1,5 @@
 /**
- * Copyright 2016-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved. Licensed under the
+ * Copyright 2016-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved. Licensed under the
  * Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with
  * the License. A copy of the License is located at
  *
@@ -14,6 +14,8 @@ package com.voicebase.gateways.awsconnect;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.voicebase.gateways.awsconnect.lambda.Lambda;
+import java.time.Duration;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -37,28 +39,27 @@ public final class VoiceBaseAttributeExtractor extends MapConfiguration {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(VoiceBaseAttributeExtractor.class);
 
-  @SuppressWarnings("unchecked")
   public static VoiceBaseAttributeExtractor fromAwsInputData(Map<String, Object> awsInputData) {
     if (awsInputData == null) {
       return null;
     }
-    Object vbAttr = awsInputData.get(Lambda.KEY_ATTRIBUTES);
-    if (vbAttr == null || !(vbAttr instanceof Map)) {
+    Map<String, Object> vbAttr = AmazonConnect.getAttributes(awsInputData);
+    if (vbAttr == null) {
       return null;
     }
-    return new VoiceBaseAttributeExtractor((Map<String, ?>) vbAttr);
+    return new VoiceBaseAttributeExtractor(vbAttr);
   }
 
   /**
    * Extract string list from configuration.
    *
-   * <p>Will either return a list of strings or null, never an empty list. Empty list entries are
-   * skipped. All entries are trimmed.
+   * <p>Will either return a list of strings or null, never an empty list. All entries are trimmed
+   * and empty entries are skipped.
    *
    * @param attr configuration
    * @param key configuration key
    * @return list of strings extracted from parameter or null.
-   * @see KinesisRecordProcessor#Lambda.VB_CONFIG_LIST_SEPARATOR
+   * @see Lambda#VB_CONFIG_LIST_SEPARATOR
    */
   public static List<String> getStringParameterList(ImmutableConfiguration attr, String key) {
     String param = getStringParameter(attr, key);
@@ -67,7 +68,7 @@ public final class VoiceBaseAttributeExtractor extends MapConfiguration {
       if (entries != null && entries.length > 0) {
         ArrayList<String> result = new ArrayList<>();
         for (String entry : entries) {
-          if (!StringUtils.isEmpty(entry)) {
+          if (!StringUtils.isBlank(entry)) {
             result.add(StringUtils.trim(entry));
           }
         }
@@ -79,6 +80,17 @@ public final class VoiceBaseAttributeExtractor extends MapConfiguration {
     return null;
   }
 
+  /**
+   * Extract a set of strings from configuration.
+   *
+   * <p>Will either return a set of strings or null, never an empty set. All entries are trimmed and
+   * empty entries are skipped.
+   *
+   * @param attr configuration
+   * @param key configuration key
+   * @return set of strings extracted from parameter or null.
+   * @see Lambda#VB_CONFIG_LIST_SEPARATOR
+   */
   public static Set<String> getStringParameterSet(ImmutableConfiguration attr, String key) {
     List<String> params = getStringParameterList(attr, key);
     if (params != null && !params.isEmpty()) {
@@ -95,12 +107,12 @@ public final class VoiceBaseAttributeExtractor extends MapConfiguration {
    * @param attr configuration
    * @param key configuration key
    * @return parameter value or null if no such key or value is empty or the pre-defined null-string
-   * @see KinesisRecordProcessor#Lambda.VB_CONFIG_NULL_STRING
+   * @see Lambda#VB_CONFIG_NULL_STRING
    */
   public static String getStringParameter(ImmutableConfiguration attr, String key) {
     if (attr != null && attr.containsKey(key)) {
       String param = attr.getString(key, null);
-      if (!StringUtils.isEmpty(param)
+      if (!StringUtils.isBlank(param)
           && !StringUtils.equalsIgnoreCase(param, Lambda.VB_CONFIG_NULL_STRING)) {
         return StringUtils.trimToNull(param);
       }
@@ -157,34 +169,39 @@ public final class VoiceBaseAttributeExtractor extends MapConfiguration {
   }
 
   public static String getVoicebaseAttributeName(String... levels) {
+    return createAttributeName(Lambda.VB_ATTR, levels);
+  }
+
+  public static String getVoicebaseXAttributeName(String... levels) {
+    return createAttributeName(Lambda.X_VB_ATTR, levels);
+  }
+
+  private static String createAttributeName(String topLevel, String... levels) {
     if (levels == null) {
       return null;
     }
     List<String> allLevels = new ArrayList<>();
-    allLevels.add(Lambda.VB_ATTR);
+    allLevels.add(topLevel);
     allLevels.addAll(Lists.newArrayList(levels));
     return StringUtils.join(allLevels, Lambda.VB_CONFIG_DELIMITER);
   }
 
-  @SuppressWarnings("unchecked")
   public static String getS3RecordingLocation(Map<String, Object> dataAsMap) {
     if (dataAsMap == null) {
       return null;
     }
 
-    String s3Location = null;
+    String s3Location = AmazonConnect.getRecordingLocation(dataAsMap);
 
     try {
-      Map<String, Object> mediaData = (Map<String, Object>) dataAsMap.get(Lambda.KEY_MEDIA);
-
-      if (mediaData != null) {
-        s3Location = mediaData.get(Lambda.KEY_MEDIA_LOCATION).toString();
-      }
       if (s3Location == null) {
-        Map<String, Object> attributes = (Map<String, Object>) dataAsMap.get(Lambda.KEY_ATTRIBUTES);
+        Map<String, Object> attributes = AmazonConnect.getAttributes(dataAsMap);
         if (attributes != null) {
-          s3Location =
-              (String) attributes.get(getVoicebaseAttributeName(Lambda.VB_ATTR_RECORDING_LOCATION));
+          Object locationFromVBAttribute =
+              attributes.get(getVoicebaseAttributeName(Lambda.VB_ATTR_RECORDING_LOCATION));
+          if (locationFromVBAttribute != null) {
+            s3Location = locationFromVBAttribute.toString();
+          }
         }
       }
     } catch (Exception e) {
@@ -193,11 +210,39 @@ public final class VoiceBaseAttributeExtractor extends MapConfiguration {
     return s3Location;
   }
 
+  public static ZonedDateTime getIntegrationReceiveTime(Map<String, Object> ctrAsMap) {
+    Map<String, Object> attributes = AmazonConnect.getAttributes(ctrAsMap);
+    if (attributes != null) {
+      Object receiveAttribute =
+          attributes.get(
+              VoiceBaseAttributeExtractor.getVoicebaseXAttributeName(
+                  Lambda.X_VB_ATTR_INTEGRATION_RECEIVE_TIME));
+      if (receiveAttribute != null) {
+        try {
+          return ZonedDateTime.parse(receiveAttribute.toString(), BeanFactory.dateTimeFormatter());
+        } catch (Exception e) {
+          // don't publish if we can't extract start time
+          LOGGER.debug("Unable to extract VoiceBase receive time", e);
+        }
+      }
+    }
+    return null;
+  }
+
+  public static Long getTimeElapsedSinceReceived(Map<String, Object> ctrAsMap) {
+    ZonedDateTime received = VoiceBaseAttributeExtractor.getIntegrationReceiveTime(ctrAsMap);
+    if (received != null) {
+      return Duration.between(received, ZonedDateTime.now()).getSeconds();
+    }
+    return null;
+  }
+
   public VoiceBaseAttributeExtractor(Map<String, ?> map) {
     super(map);
     setThrowExceptionOnMissing(false);
   }
 
+  @Override
   public Configuration subset(String prefix) {
     return new SubsetConfiguration(this, prefix, Lambda.VB_CONFIG_DELIMITER);
   }

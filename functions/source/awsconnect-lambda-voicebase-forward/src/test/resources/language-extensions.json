@@ -1,0 +1,29 @@
+{
+  "speechModel" : {
+    "features" : [ "voiceFeatures", "advancedPunctuation" ],
+    "extensions" : [ "voicemail" ]
+  },
+  "priority" : "normal",
+  "ingest" : {
+    "channels" : [ {
+      "speakerName" : "left"
+    }, {
+      "speakerName" : "right"
+    } ]
+  },
+  "prediction" : { },
+  "knowledge" : {
+    "enableDiscovery" : true,
+    "enableExternalDataSources" : true
+  },
+  "transcript" : {
+    "formatting" : { },
+    "contentFiltering" : { }
+  },
+  "publish" : {
+    "callbacks" : [ {
+      "url" : "http://example.com",
+      "method" : "post"
+    } ]
+  }
+}

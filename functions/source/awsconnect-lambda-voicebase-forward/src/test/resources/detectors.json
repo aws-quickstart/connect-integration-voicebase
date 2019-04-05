@@ -12,11 +12,7 @@
   },
   "prediction" : {
     "detectors" : [ {
-      "detectorName" : "PCI",
-      "parameters" : [ {
-        "parameter" : "detectionLevel",
-        "value" : "probableNumbers"
-      } ],
+      "detectorName" : "Number",
       "redactor" : {
         "transcript" : {
           "replacement" : "[redacted]"
@@ -27,7 +23,11 @@
         }
       }
     }, {
-      "detectorName" : "Number",
+      "detectorName" : "PCI",
+      "parameters" : [ {
+        "parameter" : "detectionLevel",
+        "value" : "probableNumbers"
+      } ],
       "redactor" : {
         "transcript" : {
           "replacement" : "[redacted]"

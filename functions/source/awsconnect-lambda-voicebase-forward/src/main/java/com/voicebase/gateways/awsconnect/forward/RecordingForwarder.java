@@ -1,5 +1,5 @@
 /**
- * Copyright 2016-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved. Licensed under the
+ * Copyright 2016-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved. Licensed under the
  * Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with
  * the License. A copy of the License is located at
  *
@@ -11,8 +11,15 @@
  */
 package com.voicebase.gateways.awsconnect.forward;
 
-import static com.voicebase.gateways.awsconnect.ConfigUtil.*;
-import static com.voicebase.gateways.awsconnect.VoiceBaseAttributeExtractor.*;
+import static com.voicebase.gateways.awsconnect.ConfigUtil.getBooleanSetting;
+import static com.voicebase.gateways.awsconnect.ConfigUtil.getDoubleSetting;
+import static com.voicebase.gateways.awsconnect.ConfigUtil.getIntSetting;
+import static com.voicebase.gateways.awsconnect.ConfigUtil.getLongSetting;
+import static com.voicebase.gateways.awsconnect.ConfigUtil.getStringListSetting;
+import static com.voicebase.gateways.awsconnect.ConfigUtil.getStringSetting;
+import static com.voicebase.gateways.awsconnect.VoiceBaseAttributeExtractor.getBooleanParameter;
+import static com.voicebase.gateways.awsconnect.VoiceBaseAttributeExtractor.getIntegerParameter;
+import static com.voicebase.gateways.awsconnect.VoiceBaseAttributeExtractor.getS3RecordingLocation;
 
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.HttpMethod;
@@ -23,21 +30,35 @@ import com.amazonaws.services.s3.model.GeneratePresignedUrlRequest;
 import com.amazonaws.services.sqs.AmazonSQS;
 import com.amazonaws.services.sqs.AmazonSQSClientBuilder;
 import com.amazonaws.services.sqs.model.SendMessageRequest;
+import com.amazonaws.util.CollectionUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.voicebase.gateways.awsconnect.AmazonConnect;
 import com.voicebase.gateways.awsconnect.BeanFactory;
+import com.voicebase.gateways.awsconnect.Metrics;
+import com.voicebase.gateways.awsconnect.Metrics.Dimension;
+import com.voicebase.gateways.awsconnect.Metrics.Name;
+import com.voicebase.gateways.awsconnect.MetricsCollector;
 import com.voicebase.gateways.awsconnect.VoiceBaseAttributeExtractor;
 import com.voicebase.gateways.awsconnect.lambda.Lambda;
+import com.voicebase.sdk.util.ApiException;
 import com.voicebase.sdk.v3.MediaProcessingRequest;
 import com.voicebase.sdk.v3.ServiceFactory;
 import com.voicebase.sdk.v3.VoiceBaseClient;
+import com.voicebase.v3client.datamodel.VbErrorResponse;
 import java.io.IOException;
 import java.net.URL;
+import java.time.ZonedDateTime;
+import java.util.Collections;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,7 +93,10 @@ public class RecordingForwarder {
   private final AmazonSQS sqsClient;
   private VoiceBaseClient voicebaseClient;
   private CallbackProvider callbackProvider;
-  private String sqsQueueUrl;
+  private String retryQueueUrl;
+  private String deadLetterQueueUrl;
+
+  private MetricsCollector metricsCollector;
 
   RecordingForwarder() {
     this(System.getenv());
@@ -84,18 +108,36 @@ public class RecordingForwarder {
     configure(env);
   }
 
+  public void setMetricsCollector(MetricsCollector metricsCollector) {
+    this.metricsCollector = metricsCollector;
+  }
+
+  public RecordingForwarder withMetricsCollector(MetricsCollector metricsCollector) {
+    setMetricsCollector(metricsCollector);
+    return this;
+  }
+
   public boolean forwardRequest(Map<String, Object> ctrAsMap) {
     boolean forwarded = false;
-    try {
 
-      Object externalId = ctrAsMap.get(Lambda.KEY_EXTERNAL_ID);
+    String instanceId = null;
+    String externalId = null;
+
+    try {
+      externalId = AmazonConnect.getContactId(ctrAsMap);
 
       if (externalId != null) {
 
+        instanceId = AmazonConnect.getInstanceId(ctrAsMap);
+        increment(Metrics.Name.CtrReceived, instanceId);
+
         if (!shouldProcess(ctrAsMap)) {
           LOGGER.info("CTR with ContactID {} should not be processed, skipping.", externalId);
+          increment(Metrics.Name.CtrSkipped, instanceId);
           return false;
         }
+
+        markRetrieval(ctrAsMap);
 
         MediaProcessingRequestBuilder builder =
             new MediaProcessingRequestBuilder()
@@ -118,59 +160,168 @@ public class RecordingForwarder {
           String parts[] = s3Location.split("/", 2);
           String bucketName = parts[0];
           String objectKey = parts[1];
+
+          int currentRetries = getRedeliveryCount(ctrAsMap);
+
           if (verifyAudioAvailability(ctrAsMap, bucketName, objectKey)) {
             String preSignedUrl = createPresignedUrl(bucketName, objectKey, mediaUrlTtl);
             req.setMediaUrl(preSignedUrl);
-            String mediaId =
-                voicebaseClient.uploadMedia(vbApiToken, req, vbApiRetryAttempts, vbApiRetryDelay);
-            if (mediaId != null) {
-              LOGGER.info("Call ID {} sent for processing; mediaId={}", externalId, mediaId);
-              forwarded = true;
+            try {
+              if (sendToVoiceBase(instanceId, req, ctrAsMap)) {
+                forwarded = true;
+                publishVoiceBaseSubmittedMetrics(instanceId, currentRetries, ctrAsMap);
+              } else {
+                LOGGER.warn("VoiceBase did not return a media ID");
+              }
+            } catch (ApiException e) {
+              LOGGER.debug(
+                  "VoiceBase API error {}: {}", e.getStatusCode(), formatError(e.getError()), e);
+              if (e.isRetryable()) {
+                LOGGER.warn("A retryable error occured hitting the VoiceBase API");
+                delayProcessing(currentRetries, ctrAsMap, externalId);
+              } else {
+                LOGGER.error(
+                    "Non-recoverable VoiceBase API error occured, skipping record; status code {}: Errors returned: {}",
+                    e.getStatusCode(),
+                    formatError(e.getError()));
+                throw e;
+              }
             }
           } else {
-            int currentRetries = getRedeliveryCount(ctrAsMap);
+            increment(Name.CtrMissingAudio, instanceId);
             if (currentRetries >= maximumRedeliveries) {
               LOGGER.warn(
-                  "CTR {} contains audio location, but audio file is not yet available. Redeliveries exceeded.Skipping...",
+                  "CTR {} contains audio location, but audio file is not yet available. Redeliveries exceeded. Skipping...",
                   externalId);
+              increment(Name.RetriesExceeded, instanceId);
             } else {
               delayProcessing(currentRetries, ctrAsMap, externalId);
+              increment(Name.Retries, instanceId);
             }
           }
         } else {
           LOGGER.warn("CTR {} doesn't contain an audio location. Skipping...", externalId);
+          increment(Name.CtrNoAudio, instanceId);
+          sendToSqs(deadLetterQueueUrl, ctrAsMap, 0, externalId);
         }
       } else {
         LOGGER.info("Received record without contact ID, not a CTR record. Skipping...");
+        increment(Name.NonCtrReceived, instanceId);
+        sendToSqs(deadLetterQueueUrl, ctrAsMap, 0, null);
       }
-    } catch (SdkClientException | IllegalArgumentException e) {
+    } catch (SdkClientException e) {
       LOGGER.warn("Skipping record, unable to generate pre-signed URL.", e);
+      increment(Name.CtrDropped, instanceId);
+      increment(Name.RecordsDropped, instanceId);
+      sendToSqs(deadLetterQueueUrl, ctrAsMap, 0, externalId);
+    } catch (ApiException e) {
+      increment(Name.VoicebaseRequestFailed, instanceId);
+      sendToSqs(deadLetterQueueUrl, ctrAsMap, 0, externalId);
     } catch (IOException e) {
-      LOGGER.error("Error sending media to VB API", e);
+      LOGGER.error("Error sending media to VoiceBase API.", e);
+      increment(Name.VoicebaseRequestFailed, instanceId);
+      sendToSqs(deadLetterQueueUrl, ctrAsMap, 0, externalId);
     } catch (Exception e) {
       LOGGER.error("Unexpected error", e);
+      increment(Name.RecordsDropped, instanceId);
+      sendToSqs(deadLetterQueueUrl, ctrAsMap, 0, externalId);
     }
     return forwarded;
   }
 
+  private String formatError(VbErrorResponse error) {
+    if (error != null) {
+      try {
+        return BeanFactory.objectMapper().writeValueAsString(error);
+      } catch (JsonProcessingException e) {
+      }
+    }
+    return "";
+  }
+
+  private void publishVoiceBaseSubmittedMetrics(
+      String instanceId, int retries, Map<String, Object> ctrAsMap) {
+    increment(Name.VoicebaseAccepted, instanceId);
+    addCount(Name.VoicebaseRequestsUntilAccepted, retries + 1, instanceId);
+    if (retries > 0) {
+      Long elapsed = VoiceBaseAttributeExtractor.getTimeElapsedSinceReceived(ctrAsMap);
+      if (elapsed != null) {
+        Map<String, String> dims = null;
+        if (!StringUtils.isBlank(instanceId)) {
+          dims = Collections.singletonMap(Dimension.InstanceId.getName(), instanceId);
+        }
+        metricsCollector.addTiming(Name.DelayTime.getName(), elapsed, TimeUnit.SECONDS, dims);
+      }
+    }
+  }
+
+  private void markRetrieval(Map<String, Object> ctrAsMap) {
+    String key =
+        VoiceBaseAttributeExtractor.getVoicebaseXAttributeName(
+            Lambda.X_VB_ATTR_INTEGRATION_RECEIVE_TIME);
+    String value = BeanFactory.dateTimeFormatter().format(ZonedDateTime.now());
+    AmazonConnect.setAttribute(ctrAsMap, key, value);
+  }
+
+  private void increment(Metrics.Name metricName, String instanceId) {
+    if (instanceId != null) {
+      pushCounterMetric(metricName, 1, Pair.of(Dimension.InstanceId, instanceId));
+    } else {
+      pushCounterMetric(metricName, 1);
+    }
+  }
+
+  private void addCount(Metrics.Name metricName, Number value, String instanceId) {
+    if (instanceId != null) {
+      pushCounterMetric(metricName, value, Pair.of(Dimension.InstanceId, instanceId));
+    } else {
+      pushCounterMetric(metricName, value);
+    }
+  }
+
+  @SafeVarargs
+  private final void pushCounterMetric(
+      Metrics.Name metricName, Number metricValue, Pair<Metrics.Dimension, String>... dimensions) {
+    if (metricsCollector != null) {
+      if (metricName != null) {
+        Map<String, String> dims = null;
+        if (dimensions != null) {
+          dims =
+              Stream.of(dimensions)
+                  .collect(Collectors.toMap(p -> p.getLeft().getName(), Pair::getRight));
+        }
+        metricsCollector.addCount(metricName.getName(), metricValue, dims);
+      }
+    }
+  }
+
   void delayProcessing(int currentRetries, Map<String, Object> ctrAsMap, Object externalId) {
-    try {
-      LOGGER.info("CTR {} Redelivery count: {}", externalId, currentRetries + 1);
-      int delay = computeDelay(currentRetries + 1);
-      setRedeliveryCount(ctrAsMap, currentRetries + 1);
-      LOGGER.info(
-          "CTR {} contains audio location, but audio file is not yet available.  Queueing into SQS with delay set to {} seconds.",
-          externalId,
-          delay);
-      ObjectMapper om = BeanFactory.objectMapper();
-      String payload = om.writeValueAsString(ctrAsMap);
-      SendMessageRequest request = new SendMessageRequest(sqsQueueUrl, payload);
-      request.setDelaySeconds(delay);
-      sqsClient.sendMessage(request);
-    } catch (AmazonClientException e) {
-      LOGGER.warn("Unable to queue for delayed processing ({})", externalId);
-    } catch (JsonProcessingException ex) {
-      LOGGER.warn("Unable to serialize to JSON string ({})", externalId);
+
+    LOGGER.info("CTR '{}' delivery count: {}", externalId, currentRetries + 1);
+    int delay = computeDelay(currentRetries + 1);
+    setRedeliveryCount(ctrAsMap, currentRetries + 1);
+    LOGGER.info(
+        "CTR {} couldn't be processed, queueing for retry into SQS with delay set to {} seconds.",
+        externalId,
+        delay);
+    sendToSqs(retryQueueUrl, ctrAsMap, delay, externalId);
+  }
+
+  private void sendToSqs(String queueUrl, Object paylaod, int delay, Object externalId) {
+    if (queueUrl != null) {
+      try {
+        ObjectMapper om = BeanFactory.objectMapper();
+        String serializedPayload = om.writeValueAsString(paylaod);
+        SendMessageRequest request =
+            new SendMessageRequest(queueUrl, serializedPayload).withDelaySeconds(delay);
+        sqsClient.sendMessage(request);
+      } catch (AmazonClientException e) {
+        LOGGER.warn("Unable to queue for delayed processing ({})", externalId);
+      } catch (JsonProcessingException ex) {
+        LOGGER.warn("Unable to serialize to JSON string ({})", externalId);
+      }
+    } else {
+      LOGGER.debug("Can't send message to SQS queue, missing queue URL: {}", paylaod);
     }
   }
 
@@ -194,12 +345,13 @@ public class RecordingForwarder {
           getIntegerParameter(
               mc.immutableSubset(Lambda.X_VB_ATTR), Lambda.X_VB_ATTR_TIMES_TO_FAIL_AUDIO_EXISTS, 0);
       int redeliveryCount = getRedeliveryCount(ctrAsMap);
-      if (redeliveryCount <= failTimes) {
+      if (redeliveryCount < failTimes) {
         return false;
       }
     } catch (Exception e) {
       LOGGER.warn(
-          "Can't read VoiceBase attributes to determine if VoiceBase should simulate failure.");
+          "Can't read VoiceBase attributes to determine if VoiceBase should simulate Audio lookup failure: {}",
+          e.getMessage());
     }
     return verifyS3ResourceAvailability(bucket, key);
   }
@@ -213,6 +365,42 @@ public class RecordingForwarder {
       LOGGER.info("Unable to perform s3Client.doesObjectExist: {}", e.getMessage());
     }
     return result;
+  }
+
+  private boolean sendToVoiceBase(
+      String instanceId, MediaProcessingRequest req, Map<String, Object> ctrAsMap)
+      throws ApiException, IllegalArgumentException, IOException {
+
+    increment(Name.VoicebaseRequestAttempted, instanceId);
+    int failTimes;
+    int redeliveryCount;
+    try {
+      VoiceBaseAttributeExtractor mc = VoiceBaseAttributeExtractor.fromAwsInputData(ctrAsMap);
+      failTimes =
+          getIntegerParameter(
+              mc.immutableSubset(Lambda.X_VB_ATTR),
+              Lambda.X_VB_ATTR_TIMES_TO_FAIL_VOICEBASE_API,
+              0);
+      redeliveryCount = getRedeliveryCount(ctrAsMap);
+
+    } catch (Exception e) {
+      LOGGER.warn(
+          "Can't read VoiceBase attributes to determine if VoiceBase should simulate API failure: {}",
+          e.getMessage());
+      failTimes = 0;
+      redeliveryCount = 0;
+    }
+    if (redeliveryCount < failTimes) {
+      throw new ApiException("Intentional API error").withStatusCode(500);
+    }
+    String mediaId =
+        voicebaseClient.uploadMedia(vbApiToken, req, vbApiRetryAttempts, vbApiRetryDelay);
+
+    LOGGER.info(
+        "Call ID '{}' sent for processing; mediaId={}",
+        AmazonConnect.getContactId(ctrAsMap),
+        mediaId);
+    return mediaId != null;
   }
 
   boolean shouldProcess(Map<String, Object> ctrAsMap) {
@@ -247,12 +435,14 @@ public class RecordingForwarder {
 
   void setRedeliveryCount(Map<String, Object> ctrAsMap, int redeliveryCount) {
     try {
-      Map<String, Object> attributes = (Map<String, Object>) ctrAsMap.get(Lambda.KEY_ATTRIBUTES);
+      Map<String, Object> attributes = AmazonConnect.getAttributes(ctrAsMap);
       if (attributes == null) {
         attributes = new LinkedHashMap<>();
-        ctrAsMap.put(Lambda.KEY_ATTRIBUTES, attributes);
+        ctrAsMap.put(AmazonConnect.CTR_NODE_ATTRIBUTES, attributes);
       }
-      attributes.put(Lambda.VB_ATTR + "_" + Lambda.VB_ATTR_REDELIVERY_COUNT, redeliveryCount);
+      attributes.put(
+          VoiceBaseAttributeExtractor.getVoicebaseAttributeName(Lambda.VB_ATTR_REDELIVERY_COUNT),
+          redeliveryCount);
     } catch (ClassCastException e) {
       LOGGER.warn("Attributes is not a map");
     }
@@ -269,13 +459,13 @@ public class RecordingForwarder {
    * @throws IllegalArgumentException if bucket name or object key is empty
    */
   private String createPresignedUrl(String bucketName, String objectKey, long ttl)
-      throws SdkClientException, IllegalArgumentException {
+      throws SdkClientException {
     if (StringUtils.isEmpty(bucketName) || StringUtils.isEmpty(objectKey)) {
       LOGGER.error(
           "Need bucket and key to create presigned URL. Bucket: {}, key: {}",
           bucketName,
           objectKey);
-      throw new IllegalArgumentException("Bucket name or object key missing.");
+      throw new SdkClientException("Bucket name or object key missing.");
     }
 
     long msec = System.currentTimeMillis() + ttl;
@@ -318,26 +508,27 @@ public class RecordingForwarder {
             ExponentialBackoffSettings.MAXIMUM_ALLOWED_DELAY_SECS));
     maximumRedeliveries =
         getIntSetting(env, Lambda.ENV_MAX_REDELIVERIES, Lambda.DEFAULT_MAX_REDELIVERIES);
-    sqsQueueUrl = getStringSetting(env, Lambda.ENV_DELAYED_QUEUE_SQS_URL, null);
+    retryQueueUrl = getStringSetting(env, Lambda.ENV_DELAYED_QUEUE_SQS_URL, null);
+    deadLetterQueueUrl = getStringSetting(env, Lambda.ENV_DEAD_LETTER_QUEUE_SQS_URL, null);
 
     configureSpeakers = getBooleanSetting(env, Lambda.ENV_CONFIGURE_SPEAKERS, true);
-    predictionsEnabled = getBooleanSetting(env, Lambda.ENV_ENABLE_PREDICTIONS, true);
+    predictionsEnabled = getBooleanSetting(env, Lambda.ENV_PREDICTIONS_ENABLE, true);
     knowledgeEnabled =
         getBooleanSetting(
-            env, Lambda.ENV_ENABLE_KNOWLEDGE_DISCOVERY, Lambda.DEFAULT_ENABLE_KNOWLEDGE_DISCOVERY);
+            env, Lambda.ENV_KNOWLEDGE_DISCOVERY_ENABLE, Lambda.DEFAULT_KNOWLEDGE_DISCOVERY_ENABLE);
     advancedPunctuationEnabled =
         getBooleanSetting(
             env,
-            Lambda.ENV_ENABLE_ADVANCED_PUNCTUATION,
-            Lambda.DEFAULT_ENABLE_ADVANCED_PUNCTUATION);
+            Lambda.ENV_ADVANCED_PUNCTUATION_ENABLE,
+            Lambda.DEFAULT_ADVANCED_PUNCTUATION_ENABLE);
     // Enabling or disabling categorization features
     enableCategorizationFeatures =
         getBooleanSetting(
-            env, Lambda.ENV_ENABLE_CATEGORIZATION, Lambda.DEFAULT_ENABLE_CATEGORIZATION);
+            env, Lambda.ENV_CATEGORIZATION_ENABLE, Lambda.DEFAULT_CATEGORIZATION_ENABLE);
     // Enable or disable analytical indexing feature
     enableAnalyticIndexingFeature =
         getBooleanSetting(
-            env, Lambda.ENV_ENABLE_ANALYTIC_INDEXING, Lambda.DEFAULT_ENABLE_ANALYTIC_INDEXING);
+            env, Lambda.ENV_ANALYTIC_INDEXING_ENABLE, Lambda.DEFAULT_ANALYTIC_INDEXING_ENABLE);
 
     leftSpeakerName =
         getStringSetting(env, Lambda.ENV_LEFT_SPEAKER, Lambda.DEFAULT_LEFT_SPEAKER_NAME);
@@ -356,17 +547,21 @@ public class RecordingForwarder {
         getIntSetting(env, Lambda.ENV_API_RETRY_ATTEMPTS, Lambda.DEFAULT_API_RETRY_ATTEMPTS);
 
     callbackUrl = getStringSetting(env, Lambda.ENV_CALLBACK_URL, null);
-    callbackMethod =
-        getStringSetting(env, Lambda.ENV_CALLBACK_METHOD, Lambda.DEFAULT_CALLBACK_METHOD);
-    callbackIncludes =
-        getStringListSetting(
-            env, Lambda.ENV_CALLBACK_INCLUDES, Lambda.DEFAULT_CALLBACK_INCLUDES_V3);
     additionalCallbackUrls = getStringListSetting(env, Lambda.ENV_CALLBACK_ADDITIONAL_URLS, null);
-    callbackProvider = new CallbackProvider();
-    callbackProvider.setIncludes(callbackIncludes);
-    callbackProvider.setCallbackMethod(callbackMethod);
-    callbackProvider.setCallbackUrl(callbackUrl);
-    callbackProvider.setAdditionalCallbackUrls(additionalCallbackUrls);
+
+    if (!StringUtils.isBlank(callbackUrl)
+        || !CollectionUtils.isNullOrEmpty(additionalCallbackUrls)) {
+      callbackMethod =
+          getStringSetting(env, Lambda.ENV_CALLBACK_METHOD, Lambda.DEFAULT_CALLBACK_METHOD);
+      callbackIncludes =
+          getStringListSetting(
+              env, Lambda.ENV_CALLBACK_INCLUDES, Lambda.DEFAULT_CALLBACK_INCLUDES_V3);
+      callbackProvider = new CallbackProvider();
+      callbackProvider.setIncludes(callbackIncludes);
+      callbackProvider.setCallbackMethod(callbackMethod);
+      callbackProvider.setCallbackUrl(callbackUrl);
+      callbackProvider.setAdditionalCallbackUrls(additionalCallbackUrls);
+    }
 
     voicebaseClient = ServiceFactory.voicebaseClient(vbApiUrl, vbApiClientLogLevel);
   }

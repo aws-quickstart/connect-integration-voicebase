@@ -1,5 +1,5 @@
 /**
- * Copyright 2016-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved. Licensed under the
+ * Copyright 2016-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved. Licensed under the
  * Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with
  * the License. A copy of the License is located at
  *
@@ -14,6 +14,7 @@ package com.voicebase.sdk.v3;
 import com.voicebase.v3client.datamodel.VbConfiguration;
 import com.voicebase.v3client.datamodel.VbMedia;
 import com.voicebase.v3client.datamodel.VbMetadata;
+import java.io.IOException;
 import retrofit.http.Header;
 import retrofit.http.Multipart;
 import retrofit.http.POST;
@@ -30,7 +31,8 @@ public interface MediaService {
       @Header("Authorization") String authorization,
       @Part("configuration") VbConfiguration configuration,
       @Part("metadata") VbMetadata metadata,
-      @Part("media") TypedFile media);
+      @Part("media") TypedFile media)
+      throws IOException;
 
   @Multipart
   @POST("/media")
@@ -38,7 +40,8 @@ public interface MediaService {
       @Header("Authorization") String authorization,
       @Part("configuration") VbConfiguration configuration,
       @Part("metadata") VbMetadata metadata,
-      @Part("mediaUrl") String mediaUrl);
+      @Part("mediaUrl") String mediaUrl)
+      throws IOException;
 
   @Multipart
   @POST("/media/{mediaId}")
@@ -47,7 +50,8 @@ public interface MediaService {
       @Path("mediaId") String mediaId,
       @Part("configuration") VbConfiguration configuration,
       @Part("metadata") VbMetadata metadata,
-      @Part("media") TypedFile media);
+      @Part("media") TypedFile media)
+      throws IOException;
 
   @Multipart
   @POST("/media/{mediaId}")
@@ -56,5 +60,6 @@ public interface MediaService {
       @Path("mediaId") String mediaId,
       @Part("configuration") VbConfiguration configuration,
       @Part("metadata") VbMetadata metadata,
-      @Part("mediaUrl") String mediaUrl);
+      @Part("mediaUrl") String mediaUrl)
+      throws IOException;
 }

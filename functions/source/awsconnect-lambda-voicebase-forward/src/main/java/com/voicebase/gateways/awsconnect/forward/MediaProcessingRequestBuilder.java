@@ -1,5 +1,5 @@
 /**
- * Copyright 2016-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved. Licensed under the
+ * Copyright 2016-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved. Licensed under the
  * Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with
  * the License. A copy of the License is located at
  *
@@ -18,6 +18,7 @@ import static com.voicebase.gateways.awsconnect.VoiceBaseAttributeExtractor.getV
 
 import com.amazonaws.util.CollectionUtils;
 import com.google.common.collect.Lists;
+import com.voicebase.gateways.awsconnect.AmazonConnect;
 import com.voicebase.gateways.awsconnect.VoiceBaseAttributeExtractor;
 import com.voicebase.gateways.awsconnect.lambda.Lambda;
 import com.voicebase.sdk.v3.MediaProcessingRequest;
@@ -49,10 +50,10 @@ import com.voicebase.v3client.datamodel.VbTranscriptRedactorConfiguration;
 import com.voicebase.v3client.datamodel.VbVocabularyConfiguration;
 import com.voicebase.v3client.datamodel.VbVocabularyTermConfiguration;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import org.apache.commons.configuration2.ImmutableConfiguration;
 import org.apache.commons.lang3.StringUtils;
@@ -79,6 +80,11 @@ public class MediaProcessingRequestBuilder {
       new VbRedactorConfiguration()
           .transcript(new VbTranscriptRedactorConfiguration().replacement(REDACTION_REPLACEMENT))
           .audio(new VbAudioRedactorConfiguration().tone(REDACTION_TONE).gain(REDACTION_GAIN));
+
+  private static final VbParameter PROBABLE_NUMBERS_DETECTOR_PARAM =
+      new VbParameter()
+          .parameter(DETECTOR_PCI_PARAM_DETECTION_LEVEL_NAME)
+          .value(DETECTOR_PCI_PARAM_DETECTION_LEVEL_VALUE);
 
   private boolean predictionsEnabled = true;
   private boolean knowledgeDiscoveryEnabled = false;
@@ -230,7 +236,7 @@ public class MediaProcessingRequestBuilder {
   }
 
   public MediaProcessingRequest build() {
-    externalId = awsInputData.get(Lambda.KEY_EXTERNAL_ID).toString();
+    externalId = AmazonConnect.getContactId(awsInputData);
     configuration = createConfiguration();
     metaData = createMetaData();
 
@@ -246,6 +252,29 @@ public class MediaProcessingRequestBuilder {
     vbMetadata.setExternalId(externalId);
     vbMetadata.setExtended(awsInputData);
     return vbMetadata;
+  }
+
+  private List<VbDetectorConfiguration> getDetectorConfig(Map<String, Boolean> detectorSettings) {
+    if (detectorSettings == null || detectorSettings.isEmpty()) {
+      return null;
+    }
+    List<VbDetectorConfiguration> result = new ArrayList<>();
+    for (Entry<String, Boolean> entry : detectorSettings.entrySet()) {
+      VbDetectorConfiguration detectorConfig =
+          new VbDetectorConfiguration().detectorName(entry.getKey());
+
+      // special case for generic PCI detector, needs different parameters
+      if (DETECTOR_NAME_PCI.equals(entry.getKey())) {
+        detectorConfig.addParametersItem(PROBABLE_NUMBERS_DETECTOR_PARAM);
+      }
+      // redaction
+      if (entry.getValue()) {
+        detectorConfig.redactor(DEFAULT_REDACTOR_CONFIG);
+      }
+      result.add(detectorConfig);
+    }
+
+    return result;
   }
 
   /**
@@ -284,95 +313,49 @@ public class MediaProcessingRequestBuilder {
     vbSpeechModelConfiguration.features(speechFeatures);
 
     // callbacks
-    List<VbIncludeTypeEnum> includes = new ArrayList<>();
-    if (callbackProvider.hasIncludes()) {
-      for (String include : callbackProvider.getIncludes()) {
-        if (!StringUtils.isEmpty(include)) {
-          VbIncludeTypeEnum includeEnum = VbIncludeTypeEnum.fromValue(include);
-          if (includeEnum != null) {
-            includes.add(includeEnum);
+    if (callbackProvider != null) {
+
+      List<VbIncludeTypeEnum> includes = new ArrayList<>();
+      if (callbackProvider.hasIncludes()) {
+        for (String include : callbackProvider.getIncludes()) {
+          if (!StringUtils.isEmpty(include)) {
+            VbIncludeTypeEnum includeEnum = VbIncludeTypeEnum.fromValue(include);
+            if (includeEnum != null) {
+              includes.add(includeEnum);
+            }
           }
         }
       }
-    }
 
-    List<VbCallbackConfiguration> callbacks = new ArrayList<>();
-    callbacks.add(
-        (new VbCallbackConfiguration())
-            .url(callbackProvider.getCallbackUrl())
-            .method(VbHttpMethodEnum.valueOf(callbackProvider.getCallbackMethod()))
-            .include(includes));
-    if (callbackProvider.hasAdditionalCallbackUrls()) {
-      for (String callback : callbackProvider.getAdditionalCallbackUrls()) {
+      List<VbCallbackConfiguration> callbacks = new ArrayList<>();
+      if (!StringUtils.isBlank(callbackProvider.getCallbackUrl())) {
         callbacks.add(
-            new VbCallbackConfiguration()
-                .url(callback)
+            (new VbCallbackConfiguration())
+                .url(callbackProvider.getCallbackUrl())
                 .method(VbHttpMethodEnum.valueOf(callbackProvider.getCallbackMethod()))
                 .include(includes));
       }
+      if (callbackProvider.hasAdditionalCallbackUrls()) {
+        for (String callback : callbackProvider.getAdditionalCallbackUrls()) {
+          callbacks.add(
+              new VbCallbackConfiguration()
+                  .url(callback)
+                  .method(VbHttpMethodEnum.valueOf(callbackProvider.getCallbackMethod()))
+                  .include(includes));
+        }
+      }
+      if (!callbacks.isEmpty()) {
+        vbPublishConfiguration.callbacks(callbacks);
+      }
     }
-    vbPublishConfiguration.callbacks(callbacks);
 
-    @SuppressWarnings("unchecked")
-    Map<String, Object> attributes = (Map<String, Object>) awsInputData.get(Lambda.KEY_ATTRIBUTES);
+    Map<String, Object> attributes = AmazonConnect.getAttributes(awsInputData);
     if (attributes != null && !attributes.isEmpty()) {
       VoiceBaseAttributeExtractor mc = new VoiceBaseAttributeExtractor(attributes);
 
       ImmutableConfiguration vbAttrs = mc.immutableSubset(Lambda.VB_ATTR);
 
-      List<VbDetectorConfiguration> detectors = new ArrayList<>();
-      Set<String> detectorsAdded = new HashSet<>();
-
-      boolean redactPCI =
-          getBooleanParameter(
-              vbAttrs, Lambda.VB_ATTR_PCIREDACT, Lambda.DEFAULT_ENABLE_PCI_REDACTION);
-      if (redactPCI) {
-        VbDetectorConfiguration pciDetectorConfiguration =
-            new VbDetectorConfiguration()
-                .detectorName(DETECTOR_NAME_PCI)
-                .parameters(
-                    Collections.singletonList(
-                        new VbParameter()
-                            .parameter(DETECTOR_PCI_PARAM_DETECTION_LEVEL_NAME)
-                            .value(DETECTOR_PCI_PARAM_DETECTION_LEVEL_VALUE)))
-                .redactor(DEFAULT_REDACTOR_CONFIG);
-        detectors.add(pciDetectorConfiguration);
-        detectorsAdded.add(pciDetectorConfiguration.getDetectorName());
-      }
-
-      boolean redactNumbers =
-          getBooleanParameter(
-              vbAttrs, Lambda.VB_ATTR_NUMBERREDACT, Lambda.DEFAULT_ENABLE_NUMBER_REDACTION);
-      if (redactNumbers) {
-        VbDetectorConfiguration numberDetectorConfiguration =
-            new VbDetectorConfiguration()
-                .detectorName(DETECTOR_NAME_NUMBER)
-                .redactor(DEFAULT_REDACTOR_CONFIG);
-        detectors.add(numberDetectorConfiguration);
-        detectorsAdded.add(numberDetectorConfiguration.getDetectorName());
-      }
-
-      String commaSeparatedDectectorNames =
-          VoiceBaseAttributeExtractor.getStringParameter(vbAttrs, Lambda.VB_ATTR_REDACTORS);
-      if (!StringUtils.isBlank(commaSeparatedDectectorNames)) {
-        String[] detectorNames = StringUtils.split(commaSeparatedDectectorNames, ',');
-        for (String detectorName : detectorNames) {
-          detectorName = detectorName.trim();
-          if (!detectorsAdded.contains(detectorName)) {
-            VbDetectorConfiguration detectorConfiguration =
-                new VbDetectorConfiguration()
-                    .detectorName(detectorName)
-                    .redactor(DEFAULT_REDACTOR_CONFIG);
-            detectors.add(detectorConfiguration);
-            detectorsAdded.add(detectorConfiguration.getDetectorName());
-          }
-        }
-      }
-
-      if (!detectors.isEmpty()) {
-        vbPredictionConfiguration.detectors(detectors);
-      }
-
+      // priority
       String priorityString = getStringParameter(vbAttrs, Lambda.VB_ATTR_PRIORIY);
       try {
         VbPriorityEnum p = VbPriorityEnum.fromValue(priorityString);
@@ -384,10 +367,44 @@ public class MediaProcessingRequestBuilder {
         LOGGER.error(
             "Unknown priority '{}' for ext ID {}",
             vbAttrs.getString(Lambda.VB_ATTR_PRIORIY),
-            awsInputData.get(Lambda.KEY_EXTERNAL_ID));
+            AmazonConnect.getContactId(awsInputData));
         vbConfiguration.priority(VbPriorityEnum.NORMAL);
       }
 
+      // detectors and redactors
+      HashMap<String, Boolean> detectorSettings = new HashMap<>();
+
+      boolean redactPCI =
+          getBooleanParameter(
+              vbAttrs, Lambda.VB_ATTR_PCIREDACT, Lambda.DEFAULT_PCI_REDACTION_ENABLE);
+      if (redactPCI) {
+        detectorSettings.put(DETECTOR_NAME_PCI, true);
+      }
+
+      boolean redactNumbers =
+          getBooleanParameter(
+              vbAttrs, Lambda.VB_ATTR_NUMBERREDACT, Lambda.DEFAULT_NUMBER_REDACTION_ENABLE);
+      if (redactNumbers) {
+        detectorSettings.put(DETECTOR_NAME_NUMBER, true);
+      }
+
+      Set<String> redactorNames = getStringParameterSet(vbAttrs, Lambda.VB_ATTR_REDACTORS);
+      if (redactorNames != null) {
+        for (String redactorName : redactorNames) {
+          detectorSettings.putIfAbsent(redactorName, true);
+        }
+      }
+
+      Set<String> detectorNames = getStringParameterSet(vbAttrs, Lambda.VB_ATTR_DETECTORS);
+      if (detectorNames != null) {
+        for (String detectorName : detectorNames) {
+          detectorSettings.putIfAbsent(detectorName, false);
+        }
+      }
+
+      vbPredictionConfiguration.detectors(getDetectorConfig(detectorSettings));
+
+      // transcript settings
       ImmutableConfiguration transcriptAttr = vbAttrs.immutableSubset(Lambda.VB_ATTR_TRANSCRIPT);
 
       vbTranscriptConfiguration.formatting(
@@ -412,7 +429,7 @@ public class MediaProcessingRequestBuilder {
       ImmutableConfiguration keywordAttr = vbAttrs.immutableSubset(Lambda.VB_ATTR_KEYWORDS);
 
       Set<String> groups = getStringParameterSet(keywordAttr, Lambda.VB_ATTR_KEYWORDS_GROUPS);
-      if (groups != null && !groups.isEmpty()) {
+      if (!CollectionUtils.isNullOrEmpty(groups)) {
 
         List<VbSpottingGroupConfiguration> spottingGroups = new ArrayList<>();
         for (String groupName : groups) {
@@ -428,6 +445,13 @@ public class MediaProcessingRequestBuilder {
       }
 
       vbSpeechModelConfiguration.language(getStringParameter(vbAttrs, Lambda.VB_ATTR_LANGUAGE));
+      // Language extensions
+      Set<String> extensions = getStringParameterSet(vbAttrs, Lambda.VB_ATTR_LANGUAGE_EXTENSIONS);
+      if (!CollectionUtils.isNullOrEmpty(extensions)) {
+        List<String> exts = Lists.newArrayList();
+        exts.addAll(extensions);
+        vbSpeechModelConfiguration.setExtensions(exts);
+      }
 
       boolean enableAnalyticalIndexing =
           getBooleanParameter(vbAttrs, Lambda.VB_ATTR_ENABLE_ANALYTICAL_INDEXING, false);

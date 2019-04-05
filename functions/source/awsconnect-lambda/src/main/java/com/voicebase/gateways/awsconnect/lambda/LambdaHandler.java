@@ -1,5 +1,5 @@
 /**
- * Copyright 2016-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved. Licensed under the
+ * Copyright 2016-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved. Licensed under the
  * Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with
  * the License. A copy of the License is located at
  *
@@ -11,8 +11,24 @@
  */
 package com.voicebase.gateways.awsconnect.lambda;
 
+import static com.voicebase.gateways.awsconnect.ConfigUtil.getBooleanSetting;
+import static com.voicebase.gateways.awsconnect.ConfigUtil.getIntSetting;
+import static com.voicebase.gateways.awsconnect.ConfigUtil.getStringSetting;
+import static com.voicebase.gateways.awsconnect.lambda.Lambda.DEFAULT_MONITORING_ENABLE;
+import static com.voicebase.gateways.awsconnect.lambda.Lambda.DEFAULT_MONITORING_METRIC_BUFFER_SIZE;
+import static com.voicebase.gateways.awsconnect.lambda.Lambda.DEFAULT_MONITORING_METRIC_FLUSH_INTERVAL;
+import static com.voicebase.gateways.awsconnect.lambda.Lambda.DEFAULT_MONITORING_METRIC_FLUSH_ON_FULL_BUFFER;
+import static com.voicebase.gateways.awsconnect.lambda.Lambda.DEFAULT_MONITORING_METRIC_NAMESPACE;
+import static com.voicebase.gateways.awsconnect.lambda.Lambda.ENV_MONITORING_ENABLE;
+import static com.voicebase.gateways.awsconnect.lambda.Lambda.ENV_MONITORING_METRIC_BUFFER_SIZE;
+import static com.voicebase.gateways.awsconnect.lambda.Lambda.ENV_MONITORING_METRIC_FLUSH_INTERVAL;
+import static com.voicebase.gateways.awsconnect.lambda.Lambda.ENV_MONITORING_METRIC_FLUSH_ON_FULL_BUFFER;
+import static com.voicebase.gateways.awsconnect.lambda.Lambda.ENV_MONITORING_METRIC_NAMESPACE;
+
 import com.google.common.base.Splitter;
+import com.voicebase.gateways.awsconnect.CloudWatchMetricsCollector;
 import com.voicebase.gateways.awsconnect.LogConfigurer;
+import com.voicebase.gateways.awsconnect.MetricsCollector;
 import java.lang.management.ManagementFactory;
 import java.util.Map;
 import java.util.Properties;
@@ -29,9 +45,15 @@ public abstract class LambdaHandler {
   protected static final Splitter CSV_SPLITTER = Splitter.on(",").omitEmptyStrings().trimResults();
   protected static final String DEFAULT_PROPERTIES = "lambda.properties";
 
-  protected abstract void configure(Map<String, String> env);
-
   private Properties handlerProperties = null;
+  private MetricsCollector metricsCollector = null;
+
+  /**
+   * Called by the constructor to finish up configuration of implementing classes.
+   *
+   * @param env the environment to use for setup
+   */
+  protected abstract void configure(Map<String, String> env);
 
   /**
    * Constructor.
@@ -51,6 +73,7 @@ public abstract class LambdaHandler {
     configureLogging(env);
     loadProperties();
     sayHello();
+    configureMetrics(env);
     configure(env);
   }
 
@@ -58,6 +81,41 @@ public abstract class LambdaHandler {
     if (env != null) {
       String logConfig = env.get(Lambda.ENV_LOG_CONFIG);
       LogConfigurer.configure(logConfig);
+    }
+  }
+
+  protected MetricsCollector getMetricsCollector() {
+    return metricsCollector;
+  }
+
+  /** Flush metrics from collector if one was configured. */
+  protected void flushMetrics() {
+    if (metricsCollector != null) {
+      metricsCollector.flush();
+    }
+  }
+
+  protected void configureMetrics(Map<String, String> env) {
+    boolean monitoringEnabled =
+        getBooleanSetting(env, ENV_MONITORING_ENABLE, DEFAULT_MONITORING_ENABLE);
+    if (monitoringEnabled) {
+      String namespace =
+          getStringSetting(
+              env, ENV_MONITORING_METRIC_NAMESPACE, DEFAULT_MONITORING_METRIC_NAMESPACE);
+      int bufferSize =
+          getIntSetting(
+              env, ENV_MONITORING_METRIC_BUFFER_SIZE, DEFAULT_MONITORING_METRIC_BUFFER_SIZE);
+      int flushInterval =
+          getIntSetting(
+              env, ENV_MONITORING_METRIC_FLUSH_INTERVAL, DEFAULT_MONITORING_METRIC_FLUSH_INTERVAL);
+      boolean publishIfBufferFull =
+          getBooleanSetting(
+              env,
+              ENV_MONITORING_METRIC_FLUSH_ON_FULL_BUFFER,
+              DEFAULT_MONITORING_METRIC_FLUSH_ON_FULL_BUFFER);
+      metricsCollector =
+          new CloudWatchMetricsCollector(namespace, bufferSize, flushInterval)
+              .withPublishIfBufferFull(publishIfBufferFull);
     }
   }
 
