@@ -1,5 +1,5 @@
 /**
- * Copyright 2016-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved. Licensed under the
+ * Copyright 2016-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved. Licensed under the
  * Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with
  * the License. A copy of the License is located at
  *
@@ -11,12 +11,18 @@
  */
 package com.voicebase.sdk.util;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.voicebase.v3client.JacksonFactory;
+import com.voicebase.v3client.datamodel.VbErrorResponse;
 import java.io.IOException;
+import org.apache.commons.lang3.StringUtils;
 import retrofit.ErrorHandler;
 import retrofit.RetrofitError;
 
 /** @author Volker Kueffel <volker@voicebase.com> */
 public class ApiErrorHandler implements ErrorHandler {
+
+  private static final ObjectMapper OM = JacksonFactory.objectMapper();
 
   /*
    * (non-Javadoc)
@@ -26,6 +32,7 @@ public class ApiErrorHandler implements ErrorHandler {
   @Override
   public Throwable handleError(RetrofitError error) {
     String message;
+    VbErrorResponse errorResponse = null;
     switch (error.getKind()) {
       case NETWORK:
         message = "Network error: " + error.getMessage();
@@ -34,10 +41,20 @@ public class ApiErrorHandler implements ErrorHandler {
         message = error.getMessage();
         // maybe add VbErrorResponse object to exception
         if (error.getResponse() != null && error.getResponse().getBody() != null) {
+          String body = null;
           try {
-            message += ": " + IOUtil.readToString(error.getResponse().getBody().in());
+            body = IOUtil.readToString(error.getResponse().getBody().in());
+            if (!StringUtils.isBlank(body)) {
+              try {
+                errorResponse = OM.readValue(body, VbErrorResponse.class);
+              } catch (Exception e) {
+                // can't parse API response, silently skip for now
+              }
+            }
           } catch (IOException e) {
+            // can't get response body, skip
           }
+          message += ": " + body;
         }
         break;
       case CONVERSION:
@@ -51,7 +68,7 @@ public class ApiErrorHandler implements ErrorHandler {
         break;
     }
 
-    ApiException apiError = new ApiException(message);
+    ApiException apiError = new ApiException(message).withError(errorResponse);
     if (error.getResponse() != null) {
       apiError.withStatusCode(error.getResponse().getStatus());
     }

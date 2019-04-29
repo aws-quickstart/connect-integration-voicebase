@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.voicebase.awsconnect</groupId>
   <artifactId>awsconnect-parent</artifactId>
-  <version>0.10.1-SNAPSHOT</version>
+  <version>0.13.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
-  <description>AWSConnect-Voicebase Gateway</description>
+  <description>Amazon Connect-Voicebase Gateway</description>
 
 
   <modules>
@@ -36,6 +36,7 @@
     <swagger.version>1.5.20</swagger.version>
     <swagger.codegen.version>2.3.1</swagger.codegen.version>
     <slf4j.version>1.7.24</slf4j.version>
+    <awsconnect.assembly.dir>${project.build.directory}/${artifactId}</awsconnect.assembly.dir>
   </properties>
 
 
@@ -60,7 +61,7 @@
         <artifactId>aws-java-sdk-sqs</artifactId>
         <version>${awssdk.version}</version>
       </dependency>
-      
+
       <dependency>
         <groupId>com.amazonaws</groupId>
         <artifactId>aws-java-sdk-kinesis</artifactId>
@@ -77,6 +78,18 @@
         <groupId>com.amazonaws</groupId>
         <artifactId>aws-java-sdk-s3</artifactId>
         <version>${awssdk.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>com.amazonaws</groupId>
+        <artifactId>aws-java-sdk-cloudwatch</artifactId>
+        <version>${awssdk.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>commons-logging</groupId>
+            <artifactId>commons-logging</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
 
       <dependency>
@@ -300,8 +313,7 @@
 
 
         <plugin>
-          <!-- NOTE: We don't need a groupId specification because the group 
-          is org.apache.maven.plugins ...which is assumed by default. -->
+          <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-assembly-plugin</artifactId>
           <version>3.1.0</version>
           <configuration>
@@ -351,6 +363,36 @@
               </goals>
             </execution>
           </executions>
+        </plugin>
+
+        <plugin>
+          <groupId>com.coderplus.maven.plugins</groupId>
+          <artifactId>copy-rename-maven-plugin</artifactId>
+          <version>1.0.1</version>
+        </plugin>
+
+        <plugin>
+          <groupId>com.github.iarellano</groupId>
+          <artifactId>replacer</artifactId>
+          <version>1.6.0</version>
+          <executions>
+            <execution>
+              <phase>package</phase> 
+              <goals>
+                <goal>replace</goal>
+              </goals>
+            </execution>
+          </executions>
+          <configuration>
+            <basedir>${project.basedir}/target</basedir>
+            <filesToInclude>**/*.template,**/*.yaml</filesToInclude>
+            <replacements>
+              <replacement>
+                <token>public.voicebase.com</token>
+                <value>aws-quickstart</value>
+              </replacement>
+            </replacements>
+          </configuration>
         </plugin>
       </plugins>
     </pluginManagement>

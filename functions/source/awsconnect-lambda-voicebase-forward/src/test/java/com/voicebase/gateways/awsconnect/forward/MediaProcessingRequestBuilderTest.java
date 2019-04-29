@@ -1,5 +1,5 @@
 /**
- * Copyright 2016-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved. Licensed under the
+ * Copyright 2016-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved. Licensed under the
  * Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with
  * the License. A copy of the License is located at
  *
@@ -14,7 +14,7 @@ package com.voicebase.gateways.awsconnect.forward;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.voicebase.gateways.awsconnect.lambda.Lambda;
+import com.voicebase.gateways.awsconnect.AmazonConnect;
 import com.voicebase.sdk.v3.MediaProcessingRequest;
 import com.voicebase.v3client.datamodel.VbConfiguration;
 import com.voicebase.v3client.datamodel.VbMetricGroupConfiguration;
@@ -51,15 +51,14 @@ public class MediaProcessingRequestBuilderTest {
 
   private static Map<String, Object> awsConfigStub() {
     HashMap<String, Object> awsAttr = new HashMap<>();
-    awsAttr.put(Lambda.KEY_EXTERNAL_ID, (Object) "externalId");
+    awsAttr.put(AmazonConnect.CTR_NODE_CONTACT_ID, (Object) "externalId");
     HashMap<String, String> vbAttr = new HashMap<>();
-    awsAttr.put(Lambda.KEY_ATTRIBUTES, vbAttr);
+    awsAttr.put(AmazonConnect.CTR_NODE_ATTRIBUTES, vbAttr);
     return awsAttr;
   }
 
-  @SuppressWarnings("unchecked")
-  private static Map<String, String> getVbAttributes(Map<String, Object> awsInput) {
-    return (Map<String, String>) awsInput.get(Lambda.KEY_ATTRIBUTES);
+  private static Map<String, Object> getVbAttributes(Map<String, Object> awsInput) {
+    return AmazonConnect.getAttributes(awsInput);
   }
 
   private static MediaProcessingRequestBuilder requestBuilderStub() {
@@ -102,9 +101,23 @@ public class MediaProcessingRequestBuilderTest {
   }
 
   @Test
+  public void testLanguageExtensions() throws IOException {
+    MediaProcessingRequestBuilder builder = requestBuilderStub();
+    Map<String, Object> vbAttr = getVbAttributes(builder.getAwsInputData());
+
+    vbAttr.put("voicebase_languageExtensions", "voicemail");
+
+    MediaProcessingRequest req = builder.build();
+
+    Assert.assertTrue(
+        req.getConfiguration().getSpeechModel().getExtensions().contains("voicemail"));
+    verifyJSONConfiguration("language-extensions.json", req.getConfiguration());
+  }
+
+  @Test
   public void testVoiceFeatures() throws IOException {
     MediaProcessingRequestBuilder builder = requestBuilderStub();
-    Map<String, String> vbAttr = getVbAttributes(builder.getAwsInputData());
+    Map<String, Object> vbAttr = getVbAttributes(builder.getAwsInputData());
 
     vbAttr.put("voicebase_classifier_names", "blah");
 
@@ -121,7 +134,7 @@ public class MediaProcessingRequestBuilderTest {
   @Test
   public void testAnalyticIndexing() throws IOException {
     MediaProcessingRequestBuilder builder = requestBuilderStub();
-    Map<String, String> vbAttr = getVbAttributes(builder.getAwsInputData());
+    Map<String, Object> vbAttr = getVbAttributes(builder.getAwsInputData());
 
     vbAttr.put("voicebase_enableAnalyticIndexing", "1");
 
@@ -134,7 +147,7 @@ public class MediaProcessingRequestBuilderTest {
   @Test
   public void testEnableAllCategories() throws IOException {
     MediaProcessingRequestBuilder builder = requestBuilderStub();
-    Map<String, String> vbAttr = getVbAttributes(builder.getAwsInputData());
+    Map<String, Object> vbAttr = getVbAttributes(builder.getAwsInputData());
 
     vbAttr.put("voicebase_enableAllCategories", "1");
 
@@ -148,7 +161,7 @@ public class MediaProcessingRequestBuilderTest {
   @Test
   public void testSpecificCategories() throws IOException {
     MediaProcessingRequestBuilder builder = requestBuilderStub();
-    Map<String, String> vbAttr = getVbAttributes(builder.getAwsInputData());
+    Map<String, Object> vbAttr = getVbAttributes(builder.getAwsInputData());
 
     vbAttr.put("voicebase_categoryNames", "alfa, gamma, beta");
 
@@ -164,7 +177,7 @@ public class MediaProcessingRequestBuilderTest {
   @Test
   public void testMetricsConfig() throws IOException {
     MediaProcessingRequestBuilder builder = requestBuilderStub();
-    Map<String, String> vbAttr = getVbAttributes(builder.getAwsInputData());
+    Map<String, Object> vbAttr = getVbAttributes(builder.getAwsInputData());
 
     vbAttr.put("voicebase_metrics_groups", "overtalk,sentiment,talk-style-tone-and-volume");
 
@@ -189,7 +202,7 @@ public class MediaProcessingRequestBuilderTest {
   public void testDetectorConfig() throws IOException {
     // test if detectors are configured
     MediaProcessingRequestBuilder builder = requestBuilderStub();
-    Map<String, String> vbAttr = getVbAttributes(builder.getAwsInputData());
+    Map<String, Object> vbAttr = getVbAttributes(builder.getAwsInputData());
 
     vbAttr.put("voicebase_pciRedaction", "1");
     vbAttr.put("voicebase_numberRedaction", "1");
@@ -207,5 +220,28 @@ public class MediaProcessingRequestBuilderTest {
 
     req = builder.build();
     Assert.assertNull(req.getConfiguration().getPrediction().getDetectors());
+  }
+
+  @Test
+  public void testCallbackConfiguration() {
+    MediaProcessingRequestBuilder builder;
+    MediaProcessingRequest req;
+
+    builder = requestBuilderStub();
+    req = builder.build();
+    Assert.assertNotNull(req.getConfiguration().getPublish().getCallbacks());
+
+    builder = requestBuilderStub();
+    builder.setCallbackProvider(null);
+    req = builder.build();
+    Assert.assertNull(req.getConfiguration().getPublish().getCallbacks());
+
+    CallbackProvider cbp = callbackProvider();
+    cbp.setCallbackUrl(null);
+    cbp.setAdditionalCallbackUrls(null);
+    builder = requestBuilderStub();
+    builder.setCallbackProvider(cbp);
+    req = builder.build();
+    Assert.assertNull(req.getConfiguration().getPublish().getCallbacks());
   }
 }

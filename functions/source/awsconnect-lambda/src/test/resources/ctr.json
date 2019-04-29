@@ -1,0 +1,87 @@
+{
+  "AWSAccountId": "999080565678",
+  "AWSContactTraceRecordFormatVersion": "2017-03-10",
+  "Agent": {
+    "ARN": "arn:aws:connect:us-east-1:999080565678:instance/38f09398-0db8-4368-a844-6cedc0c18362/agent/5d467b05-e376-4801-8ee3-24f6a6638c6a",
+    "AfterContactWorkDuration": 87,
+    "AfterContactWorkEndTimestamp": "2019-01-02T00:59:00Z",
+    "AfterContactWorkStartTimestamp": "2019-01-02T00:57:33Z",
+    "AgentInteractionDuration": 2990,
+    "ConnectedToAgentTimestamp": "2019-01-02T00:07:42Z",
+    "CustomerHoldDuration": 0,
+    "HierarchyGroups": {
+      "Level1": {
+        "ARN": "arn:aws:connect:us-east-1:999080565678:instance/38f09398-0db8-4368-a844-6cedc0c18362/agent-group/9483c24f-3143-4dee-9db7-38a79c9ea912",
+        "GroupName": "HierarchyGroup1"
+      },
+      "Level2": {
+        "ARN": "arn:aws:connect:us-east-1:999080565678:instance/38f09398-0db8-4368-a844-6cedc0c18362/agent-group/5a3cf588-a70e-4a5c-98b2-1ba67220a381",
+        "GroupName": "HierarchyGroup2"
+      },
+      "Level3": null,
+      "Level4": null,
+      "Level5": null
+    },
+    "LongestHoldDuration": 0,
+    "NumberOfHolds": 0,
+    "RoutingProfile": {
+      "ARN": "arn:aws:connect:us-east-1:999080565678:instance/38f09398-0db8-4368-a844-6cedc0c18362/routing-profile/9a85b8a4-a448-4ccd-802f-427f1435aa92",
+      "Name": "default_routing"
+    },
+    "Username": "agent007"
+  },
+  "AgentConnectionAttempts": 1,
+  "Attributes": {
+    "voicebase_enabled": "1",
+    "testAttribute1": "testValue1"
+  },
+  "Channel": "VOICE",
+  "ConnectedToSystemTimestamp": "2019-01-02T00:07:11Z",
+  "ContactId": "3aec0dc9-2817-4b95-8b72-492c8f972493",
+  "CustomerEndpoint": {
+    "Address": "+5556373496",
+    "Type": "TELEPHONE_NUMBER"
+  },
+  "DisconnectTimestamp": "2019-01-02T00:57:33Z",
+  "InitialContactId": null,
+  "InitiationMethod": "INBOUND",
+  "InitiationTimestamp": "2019-01-02T00:07:11Z",
+  "InstanceARN": "arn:aws:connect:us-east-1:999080565678:instance/38f09398-0db8-4368-a844-6cedc0c18362",
+  "LastUpdateTimestamp": "2019-01-02T01:00:06Z",
+  "MediaStreams": [{
+    "Type": "AUDIO"
+  }],
+  "NextContactId": null,
+  "PreviousContactId": null,
+  "Queue": {
+    "ARN": "arn:aws:connect:us-east-1:999080565678:instance/38f09398-0db8-4368-a844-6cedc0c18362/queue/9b01dc14-db95-45ab-acbd-2ad4b37d7b79",
+    "DequeueTimestamp": "2019-01-02T00:07:42Z",
+    "Duration": 6,
+    "EnqueueTimestamp": "2019-01-02T00:07:36Z",
+    "Name": "default_queue"
+  },
+  "Recording": {
+    "DeletionReason": null,
+    "Location": "awsconnect-bucket/connect/my-connect-instance/CallRecordings/2019/01/02/3aec0dc9-2817-4b95-8b72-492c8f972493_20190102T00:07_UTC.wav",
+    "Status": "AVAILABLE",
+    "Type": "AUDIO"
+  },
+  "Recordings": [{
+    "DeletionReason": null,
+    "FragmentStartNumber": null,
+    "FragmentStopNumber": null,
+    "Location": "awsconnect-bucket/connect/my-connect-instance/CallRecordings/2019/01/02/3aec0dc9-2817-4b95-8b72-492c8f972493_20190102T00:07_UTC.wav",
+    "MediaStreamType": "AUDIO",
+    "ParticipantType": null,
+    "StartTimestamp": null,
+    "Status": "AVAILABLE",
+    "StopTimestamp": null,
+    "StorageType": "S3"
+  }],
+  "SystemEndpoint": {
+    "Address": "+5553772250",
+    "Type": "TELEPHONE_NUMBER"
+  },
+  "TransferCompletedTimestamp": null,
+  "TransferredToEndpoint": null
+}

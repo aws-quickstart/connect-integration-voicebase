@@ -1,5 +1,5 @@
 /**
- * Copyright 2016-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved. Licensed under the
+ * Copyright 2016-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved. Licensed under the
  * Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with
  * the License. A copy of the License is located at
  *
@@ -36,10 +36,10 @@ public class LambdaTranscriptionProcessor extends LambdaHandler
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LambdaTranscriptionProcessor.class);
 
-  private final APIGatewayProxyResponseEvent responseUnauthorized;
-  private final APIGatewayProxyResponseEvent responseSuccess;
-  private final APIGatewayProxyResponseEvent responseInvalidRequest;
-  private final APIGatewayProxyResponseEvent responseServerError;
+  private APIGatewayProxyResponseEvent responseUnauthorized;
+  private APIGatewayProxyResponseEvent responseSuccess;
+  private APIGatewayProxyResponseEvent responseInvalidRequest;
+  private APIGatewayProxyResponseEvent responseServerError;
 
   private ObjectMapper objectMapper;
   private TranscriptionForwarder forwarder;
@@ -51,6 +51,53 @@ public class LambdaTranscriptionProcessor extends LambdaHandler
 
   LambdaTranscriptionProcessor(Map<String, String> env) {
     super(env);
+  }
+
+  @Override
+  public APIGatewayProxyResponseEvent handleRequest(
+      APIGatewayProxyRequestEvent input, Context context) {
+    if (input == null || input.getBody() == null || StringUtils.isEmpty(input.getBody())) {
+      return responseInvalidRequest;
+    }
+
+    if (!validateRequestSource(input)) {
+      return responseUnauthorized;
+    }
+
+    try {
+      forwarder.forward(input.getBody());
+    } catch (Exception e) {
+      LOGGER.error("Error forwarding transcript to stream", e);
+      return responseServerError;
+    }
+
+    flushMetrics();
+    return responseSuccess;
+  }
+
+  /**
+   * Check incoming request against source IP whitelist if there is one.
+   *
+   * <p>Right now only accepts IP addresses on the whitelist, may want to extend to process CIDRs.
+   *
+   * @param input incoming event
+   * @param env this function's environment
+   * @return true if passed IP check or there is no whitelist, false otherwise
+   */
+  boolean validateRequestSource(APIGatewayProxyRequestEvent input) {
+    String sourceIp = null;
+    if (input.getRequestContext() != null && input.getRequestContext().getIdentity() != null) {
+      sourceIp = input.getRequestContext().getIdentity().getSourceIp();
+    }
+
+    return requestSourceValidator.validate(sourceIp);
+  }
+
+  @Override
+  protected void configure(Map<String, String> env) {
+    objectMapper = BeanFactory.objectMapper();
+    forwarder = new TranscriptionForwarder(env).withMetricsCollector(getMetricsCollector());
+    requestSourceValidator = BeanFactory.requestSourceValidator(env);
 
     String successResponse;
     String failureResponse;
@@ -78,53 +125,5 @@ public class LambdaTranscriptionProcessor extends LambdaHandler
         new APIGatewayProxyResponseEvent().withStatusCode(406).withBody(failureResponse);
     responseServerError =
         new APIGatewayProxyResponseEvent().withStatusCode(500).withBody(failureResponse);
-
-    configure(env);
-  }
-
-  @Override
-  public APIGatewayProxyResponseEvent handleRequest(
-      APIGatewayProxyRequestEvent input, Context context) {
-    if (input == null || input.getBody() == null || StringUtils.isEmpty(input.getBody())) {
-      return responseInvalidRequest;
-    }
-
-    if (!validateRequestSource(input)) {
-      return responseUnauthorized;
-    }
-
-    try {
-      forwarder.forward(input.getBody());
-    } catch (Exception e) {
-      LOGGER.error("Error forwarding transcript to stream", e);
-      return responseServerError;
-    }
-
-    return responseSuccess;
-  }
-
-  /**
-   * Check incoming request against source IP whitelist if there is one.
-   *
-   * <p>Right now only accepts IP addresses on the whitelist, may want to extend to process CIDRs.
-   *
-   * @param input incoming event
-   * @param env this function's environment
-   * @return true if passed IP check or there is no whitelist, false otherwise
-   */
-  boolean validateRequestSource(APIGatewayProxyRequestEvent input) {
-    String sourceIp = null;
-    if (input.getRequestContext() != null && input.getRequestContext().getIdentity() != null) {
-      sourceIp = input.getRequestContext().getIdentity().getSourceIp();
-    }
-
-    return requestSourceValidator.validate(sourceIp);
-  }
-
-  @Override
-  protected void configure(Map<String, String> env) {
-    objectMapper = BeanFactory.objectMapper();
-    forwarder = new TranscriptionForwarder(env);
-    requestSourceValidator = BeanFactory.requestSourceValidator(env);
   }
 }

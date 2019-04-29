@@ -4,7 +4,7 @@
   <parent>
     <groupId>com.voicebase.awsconnect</groupId>
     <artifactId>awsconnect-parent</artifactId>
-    <version>0.10.1-SNAPSHOT</version>
+    <version>0.13.0-SNAPSHOT</version>
   </parent>
   <artifactId>awsconnect-lambda</artifactId>
   <dependencies>
@@ -54,6 +54,11 @@
 
     <dependency>
       <groupId>com.amazonaws</groupId>
+      <artifactId>aws-java-sdk-cloudwatch</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.amazonaws</groupId>
       <artifactId>aws-lambda-java-core</artifactId>
       <scope>provided</scope>
     </dependency>
@@ -74,11 +79,23 @@
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
     </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.hamcrest</groupId>
+      <artifactId>hamcrest-core</artifactId>
+      <version>1.3</version>
+      <scope>test</scope>
+    </dependency>
 
   </dependencies>
 
   <build>
     <finalName>awsconnect-lambda</finalName>
+
     <resources>
       <resource>
         <directory>src/main/resources</directory>
@@ -95,6 +112,28 @@
         </excludes>
       </resource>
     </resources>
+
+
+    <plugins>
+      <plugin>
+        <groupId>com.coderplus.maven.plugins</groupId>
+        <artifactId>copy-rename-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>generate-legacy-template</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>copy</goal>
+            </goals>
+            <configuration>
+              <sourceFile>src/main/cloudformation/voicebase-transcription-s3.yaml</sourceFile>
+              <destinationFile>src/main/cloudformation/voicebase.template</destinationFile>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+
   </build>
 
 </project>

@@ -1,5 +1,5 @@
 /**
- * Copyright 2016-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved. Licensed under the
+ * Copyright 2016-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved. Licensed under the
  * Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with
  * the License. A copy of the License is located at
  *
@@ -15,6 +15,7 @@ import static com.voicebase.gateways.awsconnect.VoiceBaseAttributeExtractor.getV
 import static org.junit.Assert.assertFalse;
 
 import com.amazonaws.services.s3.model.AmazonS3Exception;
+import com.voicebase.gateways.awsconnect.AmazonConnect;
 import com.voicebase.gateways.awsconnect.lambda.Lambda;
 import java.util.HashMap;
 import java.util.Map;
@@ -25,15 +26,14 @@ public class RecordingForwarderTest {
 
   private static Map<String, Object> awsConfigStub() {
     HashMap<String, Object> awsAttr = new HashMap<>();
-    awsAttr.put(Lambda.KEY_EXTERNAL_ID, (Object) "externalId");
+    awsAttr.put(AmazonConnect.CTR_NODE_CONTACT_ID, (Object) "externalId");
     HashMap<String, String> vbAttr = new HashMap<>();
-    awsAttr.put(Lambda.KEY_ATTRIBUTES, vbAttr);
+    awsAttr.put(AmazonConnect.CTR_NODE_ATTRIBUTES, vbAttr);
     return awsAttr;
   }
 
-  @SuppressWarnings("unchecked")
-  private static Map<String, String> getVbAttributes(Map<String, Object> awsInput) {
-    return (Map<String, String>) awsInput.get(Lambda.KEY_ATTRIBUTES);
+  private static Map<String, Object> getVbAttributes(Map<String, Object> awsInput) {
+    return AmazonConnect.getAttributes(awsInput);
   }
 
   @Test
@@ -47,7 +47,7 @@ public class RecordingForwarderTest {
         forwarder.shouldProcess(awsAttr));
 
     awsAttr = awsConfigStub();
-    Map<String, String> vbAttr = getVbAttributes(awsAttr);
+    Map<String, Object> vbAttr = getVbAttributes(awsAttr);
     vbAttr.put(flowVariable, "1");
     Assert.assertTrue(
         "Should forward request if respective flow variable is set to 1",
@@ -65,7 +65,7 @@ public class RecordingForwarderTest {
   @Test
   public void testVerifyAudioAvailability() {
     Map<String, Object> ctrAsMap = awsConfigStub();
-    Map<String, Object> attr = (Map<String, Object>) ctrAsMap.get(Lambda.KEY_ATTRIBUTES);
+    Map<String, Object> attr = AmazonConnect.getAttributes(ctrAsMap);
     attr.put("x-voicebase_timesToFailAudioExists", 3);
     RecordingForwarder forwarder = new RecordingForwarder();
 

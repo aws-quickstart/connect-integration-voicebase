@@ -1,0 +1,633 @@
+{
+	"formatVersion": "3.0.8",
+	"mediaId": "71c2665f-1aa8-4f64-8f72-684fe3bb9672",
+	"accountId": "ad29bec5-0649-ddda-f166-dadc74f161c4",
+	"accountName": "Volker Kueffel Production Account",
+	"status": "finished",
+	"dateCreated": "2018-08-09T02:34:57.973Z",
+	"dateFinished": "2018-08-09T02:35:12.368Z",
+	"metadata": {
+		"externalId": "a75de3aa-7c2a-4a57-88b8-ad652aa8d749",
+		"extended": {
+			"AWSAccountId": "463733155324",
+			"AWSContactTraceRecordFormatVersion": "2017-03-10",
+			"Agent": {
+				"ARN": "arn:aws:connect:us-east-1:463733155324:instance/23cf0696-cb48-4c43-908b-03c200708e39/agent/0d32478a-43f7-4217-99bb-281e240240f8",
+				"AfterContactWorkDuration": 17,
+				"AfterContactWorkEndTimestamp": "2018-08-09T02:33:37Z",
+				"AfterContactWorkStartTimestamp": "2018-08-09T02:33:20Z",
+				"AgentInteractionDuration": 11,
+				"ConnectedToAgentTimestamp": "2018-08-09T02:33:09Z",
+				"CustomerHoldDuration": 0,
+				"LongestHoldDuration": 0,
+				"NumberOfHolds": 0,
+				"RoutingProfile": {
+					"ARN": "arn:aws:connect:us-east-1:463733155324:instance/23cf0696-cb48-4c43-908b-03c200708e39/routing-profile/1d3579ec-bfcb-4c0a-9108-fda3ccc49a15",
+					"Name": "Basic Routing Profile"
+				},
+				"Username": "AROAJUK3SVOK6HYGK2IT2:volker@voicebase.com"
+			},
+			"AgentConnectionAttempts": 1,
+			"Attributes": {
+				
+			},
+			"Channel": "VOICE",
+			"ConnectedToSystemTimestamp": "2018-08-09T02:32:45Z",
+			"ContactId": "a75de3aa-7c2a-4a57-88b8-ad652aa8d749",
+			"CustomerEndpoint": {
+				"Address": "+14156372250",
+				"Type": "TELEPHONE_NUMBER"
+			},
+			"DisconnectTimestamp": "2018-08-09T02:33:19Z",
+			"InitiationMethod": "INBOUND",
+			"InitiationTimestamp": "2018-08-09T02:32:45Z",
+			"InstanceARN": "arn:aws:connect:us-east-1:463733155324:instance/23cf0696-cb48-4c43-908b-03c200708e39",
+			"LastUpdateTimestamp": "2018-08-09T02:34:44Z",
+			"MediaStreams": [
+				{
+					"Type": "AUDIO"
+				}
+			],
+			"Queue": {
+				"ARN": "arn:aws:connect:us-east-1:463733155324:instance/23cf0696-cb48-4c43-908b-03c200708e39/queue/3aa9cfcf-520b-41de-a95e-e64c426add4a",
+				"DequeueTimestamp": "2018-08-09T02:33:09Z",
+				"Duration": 21,
+				"EnqueueTimestamp": "2018-08-09T02:32:47Z",
+				"Name": "BasicQueue"
+			},
+			"Recording": {
+				"Location": "connect-bc6ddeda6038/connect/vb-gw-lambda/CallRecordings/2018/08/09/a75de3aa-7c2a-4a57-88b8-ad652aa8d749_20180809T02:33_UTC.wav",
+				"Status": "AVAILABLE",
+				"Type": "AUDIO"
+			},
+			"SystemEndpoint": {
+				"Address": "+19366472484",
+				"Type": "TELEPHONE_NUMBER"
+			}
+		}
+	},
+	"mediaContentType": "audio/x-wav",
+	"length": 10800,
+	"knowledge": {
+		"keywords": [
+			{
+				"keyword": "scoff",
+				"relevance": 7.78113224113E-20,
+				"mentions": [
+					{
+						"speakerName": "Caller",
+						"occurrences": [
+							{
+								"s": 5159
+							}
+						]
+					}
+				]
+			},
+			{
+				"keyword": "spoke",
+				"relevance": 7.78113224113E-20,
+				"mentions": [
+					{
+						"speakerName": "Caller",
+						"occurrences": [
+							{
+								"s": 3729
+							}
+						]
+					}
+				]
+			},
+			{
+				"keyword": "bunch",
+				"relevance": 7.78113224113E-20,
+				"mentions": [
+					{
+						"speakerName": "Agent",
+						"occurrences": [
+							{
+								"s": 7440
+							}
+						]
+					}
+				]
+			},
+			{
+				"keyword": "making",
+				"relevance": 3.87399762869E-21,
+				"mentions": [
+					{
+						"speakerName": "Caller",
+						"occurrences": [
+							{
+								"s": 4640
+							}
+						]
+					}
+				]
+			}
+		],
+		"topics": []
+	},
+	"transcript": {
+		"confidence": 0.2031801553286533,
+		"words": [
+			{
+				"p": 0,
+				"c": 1.0,
+				"s": 2499,
+				"e": 7710,
+				"m": "turn",
+				"w": "Agent"
+			},
+			{
+				"p": 1,
+				"c": 0.983,
+				"s": 2499,
+				"e": 3059,
+				"frq": [
+					{
+						"e": 0.501,
+						"f": 198.832
+					},
+					{
+						"e": 0.281,
+						"f": 298.209
+					}
+				],
+				"v": 8.905,
+				"w": "Well"
+			},
+			{
+				"p": 2,
+				"c": 0.0,
+				"s": 3059,
+				"e": 3059,
+				"m": "punc",
+				"w": ","
+			},
+			{
+				"p": 3,
+				"c": 0.273,
+				"s": 3300,
+				"e": 3460,
+				"frq": [
+					{
+						"e": 0.797,
+						"f": 198.832
+					},
+					{
+						"e": 0.287,
+						"f": 298.209
+					}
+				],
+				"v": 3.521,
+				"w": "this"
+			},
+			{
+				"p": 4,
+				"c": 0.944,
+				"s": 3470,
+				"e": 3590,
+				"frq": [
+					{
+						"e": 0.371,
+						"f": 198.832
+					},
+					{
+						"e": 0.35,
+						"f": 236.098
+					}
+				],
+				"v": 6.742,
+				"w": "is"
+			},
+			{
+				"p": 5,
+				"c": 0.358,
+				"s": 3600,
+				"e": 3850,
+				"frq": [
+					{
+						"e": 0.267,
+						"f": 211.254
+					},
+					{
+						"e": 0.186,
+						"f": 285.787
+					}
+				],
+				"v": 5.771,
+				"w": "fought"
+			},
+			{
+				"p": 6,
+				"c": 0.515,
+				"s": 6009,
+				"e": 6349,
+				"frq": [
+					{
+						"e": 0.393,
+						"f": 149.143
+					},
+					{
+						"e": 0.311,
+						"f": 285.787
+					}
+				],
+				"v": 3.842,
+				"w": "By"
+			},
+			{
+				"p": 7,
+				"c": 0.985,
+				"s": 7320,
+				"e": 7429,
+				"frq": [
+					{
+						"e": 0.0,
+						"f": 0.0
+					},
+					{
+						"e": 0.0,
+						"f": 0.0
+					}
+				],
+				"v": 3.229,
+				"w": "a"
+			},
+			{
+				"p": 8,
+				"c": 0.747,
+				"s": 7440,
+				"e": 7710,
+				"frq": [
+					{
+						"e": 0.261,
+						"f": 198.832
+					},
+					{
+						"e": 0.167,
+						"f": 310.631
+					}
+				],
+				"v": 3.972,
+				"w": "bunch"
+			},
+			{
+				"p": 9,
+				"c": 0.0,
+				"s": 7710,
+				"e": 7710,
+				"m": "punc",
+				"w": "."
+			},
+			{
+				"p": 10,
+				"c": 1.0,
+				"s": 2920,
+				"e": 7850,
+				"m": "turn",
+				"w": "Caller"
+			},
+			{
+				"p": 11,
+				"c": 0.226,
+				"s": 2920,
+				"e": 3140,
+				"frq": [
+					{
+						"e": 0.231,
+						"f": 434.852
+					},
+					{
+						"e": 0.99,
+						"f": 521.807
+					}
+				],
+				"v": 1.963,
+				"w": "All"
+			},
+			{
+				"p": 12,
+				"c": 0.976,
+				"s": 3469,
+				"e": 3570,
+				"frq": [
+					{
+						"e": 0.334,
+						"f": 360.319
+					},
+					{
+						"e": 1.0,
+						"f": 459.696
+					}
+				],
+				"v": 0.636,
+				"w": "the"
+			},
+			{
+				"p": 13,
+				"c": 0.462,
+				"s": 3580,
+				"e": 3719,
+				"frq": [
+					{
+						"e": 0.0,
+						"f": 0.0
+					},
+					{
+						"e": 0.0,
+						"f": 0.0
+					}
+				],
+				"v": 0.488,
+				"w": "fuel"
+			},
+			{
+				"p": 14,
+				"c": 0.968,
+				"s": 3729,
+				"e": 4070,
+				"frq": [
+					{
+						"e": 1.0,
+						"f": 509.385
+					},
+					{
+						"e": 0.279,
+						"f": 1006.269
+					}
+				],
+				"v": 1.185,
+				"w": "spoke"
+			},
+			{
+				"p": 15,
+				"c": 0.0,
+				"s": 4070,
+				"e": 4070,
+				"m": "punc",
+				"w": ","
+			},
+			{
+				"p": 16,
+				"c": 0.972,
+				"s": 4080,
+				"e": 4409,
+				"frq": [
+					{
+						"e": 0.178,
+						"f": 186.41
+					},
+					{
+						"e": 0.277,
+						"f": 260.942
+					}
+				],
+				"v": 1.919,
+				"w": "I'm"
+			},
+			{
+				"p": 17,
+				"c": 0.962,
+				"s": 4419,
+				"e": 4630,
+				"frq": [
+					{
+						"e": 0.308,
+						"f": 372.741
+					},
+					{
+						"e": 1.0,
+						"f": 447.274
+					}
+				],
+				"v": 0.657,
+				"w": "just"
+			},
+			{
+				"p": 18,
+				"c": 0.789,
+				"s": 4640,
+				"e": 4899,
+				"frq": [
+					{
+						"e": 0.282,
+						"f": 260.942
+					},
+					{
+						"e": 0.435,
+						"f": 422.43
+					}
+				],
+				"v": 0.453,
+				"w": "making"
+			},
+			{
+				"p": 19,
+				"c": 0.608,
+				"s": 4909,
+				"e": 5000,
+				"frq": [
+					{
+						"e": 0.0,
+						"f": 0.0
+					},
+					{
+						"e": 0.0,
+						"f": 0.0
+					}
+				],
+				"v": 0.281,
+				"w": "it"
+			},
+			{
+				"p": 20,
+				"c": 0.654,
+				"s": 5010,
+				"e": 5149,
+				"frq": [
+					{
+						"e": 0.486,
+						"f": 347.897
+					},
+					{
+						"e": 0.68,
+						"f": 434.852
+					}
+				],
+				"v": 0.872,
+				"w": "to"
+			},
+			{
+				"p": 21,
+				"c": 0.863,
+				"s": 5159,
+				"e": 5580,
+				"frq": [
+					{
+						"e": 0.142,
+						"f": 621.184
+					},
+					{
+						"e": 0.35,
+						"f": 670.872
+					}
+				],
+				"v": 0.506,
+				"w": "scoff"
+			},
+			{
+				"p": 22,
+				"c": 0.0,
+				"s": 5580,
+				"e": 5580,
+				"m": "punc",
+				"w": "."
+			},
+			{
+				"p": 23,
+				"c": 0.377,
+				"s": 6779,
+				"e": 7040,
+				"frq": [
+					{
+						"e": 0.163,
+						"f": 509.385
+					},
+					{
+						"e": 0.293,
+						"f": 608.762
+					}
+				],
+				"v": 0.731,
+				"w": "Try"
+			},
+			{
+				"p": 24,
+				"c": 0.955,
+				"s": 7049,
+				"e": 7260,
+				"frq": [
+					{
+						"e": 0.352,
+						"f": 459.696
+					},
+					{
+						"e": 1.0,
+						"f": 509.385
+					}
+				],
+				"v": 0.838,
+				"w": "that"
+			},
+			{
+				"p": 25,
+				"c": 0.0,
+				"s": 7260,
+				"e": 7260,
+				"m": "punc",
+				"w": "."
+			},
+			{
+				"p": 26,
+				"c": 0.587,
+				"s": 7270,
+				"e": 7440,
+				"frq": [
+					{
+						"e": 0.0,
+						"f": 0.0
+					},
+					{
+						"e": 0.0,
+						"f": 0.0
+					}
+				],
+				"v": 0.171,
+				"w": "If"
+			},
+			{
+				"p": 27,
+				"c": 0.647,
+				"s": 7450,
+				"e": 7850,
+				"frq": [
+					{
+						"e": 0.192,
+						"f": 223.676
+					},
+					{
+						"e": 0.846,
+						"f": 521.807
+					}
+				],
+				"v": 0.799,
+				"w": "by"
+			},
+			{
+				"p": 28,
+				"c": 0.0,
+				"s": 7850,
+				"e": 7850,
+				"m": "punc",
+				"w": "."
+			}
+		],
+		"voiceActivity": [
+			{
+				"speakerName": "Agent",
+				"occurrences": [
+					{
+						"s": 2070,
+						"e": 8130
+					},
+					{
+						"s": 9850,
+						"e": 10800
+					}
+				]
+			},
+			{
+				"speakerName": "Caller",
+				"occurrences": [
+					{
+						"s": 2270,
+						"e": 8250
+					}
+				]
+			}
+		],
+		"alternateFormats": [
+			{
+				"format": "dfxp",
+				"contentType": "application/ttaf+xml",
+				"contentEncoding": "Base64",
+				"charset": "utf-8",
+				"data": "PHR0IHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDA2LzA0L3R0YWYxIiB4bWxuczp0dHM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDYvMDQvdHRhZjEjc3R5bGluZyI+PGhlYWQ+PHN0eWxpbmc+PHN0eWxlIGlkPSJkZWZhdWx0Q2FwdGlvbiIgdHRzOmJhY2tncm91bmRDb2xvcj0iYmxhY2siIHR0czpjb2xvcj0id2hpdGUiIHR0czpmb250RmFtaWx5PSJTYW5zU2VyaWYiIHR0czpmb250U2l6ZT0iMTIiIHR0czpmb250U3R5bGU9Im5vcm1hbCIgdHRzOmZvbnRXZWlnaHQ9Im5vcm1hbCIgdHRzOnRleHRBbGlnbj0ibGVmdCIgdHRzOnRleHREZWNvcmF0aW9uPSJub25lIi8+PC9zdHlsaW5nPjwvaGVhZD48Ym9keSBpZD0idGhlYm9keSI+PGRpdiBzdHlsZT0iZGVmYXVsdENhcHRpb24iIHhtbDpsYW5nPSJlbiI+PHAgYmVnaW49IjAwOjAwOjAyLjUwIiBlbmQ9IjAwOjAwOjA3LjcxIj5BZ2VudDogV2VsbCwgdGhpcyBpcyBmb3VnaHQgQnkgYSBidW5jaC48L3A+PHAgYmVnaW49IjAwOjAwOjAyLjkyIiBlbmQ9IjAwOjAwOjA3Ljg1Ij5DYWxsZXI6IEFsbCB0aGUgZnVlbCBzcG9rZSwgSSdtIGp1c3Q8YnIvPm1ha2luZyBpdCB0byBzY29mZi4gVHJ5IHRoYXQuIElmIGJ5LjwvcD48L2Rpdj48L2JvZHk+PC90dD4="
+			},
+			{
+				"format": "webvtt",
+				"contentType": "text/vtt",
+				"contentEncoding": "Base64",
+				"charset": "utf-8",
+				"data": "V0VCVlRUCgoxCjAwOjAwOjAyLjQ5OSAtLT4gMDA6MDA6MDcuNzEwCkFnZW50OiBXZWxsLCB0aGlzIGlzIGZvdWdodCBCeSBhIGJ1bmNoLgoKMgowMDowMDowMi45MjAgLS0+IDAwOjAwOjA3Ljg1MApDYWxsZXI6IEFsbCB0aGUgZnVlbCBzcG9rZSwgSSdtIGp1c3QKbWFraW5nIGl0IHRvIHNjb2ZmLiBUcnkgdGhhdC4gSWYgYnkuCgo="
+			},
+			{
+				"format": "srt",
+				"contentType": "text/srt",
+				"contentEncoding": "Base64",
+				"charset": "utf-8",
+				"data": "MQowMDowMDowMiw1MCAtLT4gMDA6MDA6MDcsNzEKQWdlbnQ6IFdlbGwsIHRoaXMgaXMgZm91Z2h0IEJ5IGEgYnVuY2guCgoyCjAwOjAwOjAyLDkyIC0tPiAwMDowMDowNyw4NQpDYWxsZXI6IEFsbCB0aGUgZnVlbCBzcG9rZSwgSSdtIGp1c3QKbWFraW5nIGl0IHRvIHNjb2ZmLiBUcnkgdGhhdC4gSWYgYnkuCgo="
+			},
+			{
+				"format": "text",
+				"contentType": "text/plain",
+				"contentEncoding": "Base64",
+				"charset": "utf-8",
+				"data": "QWdlbnQ6IFdlbGwsIHRoaXMgaXMgZm91Z2h0IEJ5IGEgYnVuY2guIENhbGxlcjogQWxsIHRoZSBmdWVsIHNwb2tlLCBJJ20ganVzdCBtYWtpbmcgaXQgdG8gc2NvZmYuIFRyeSB0aGF0LiBJZiBieS4="
+			}
+		]
+	}
+}

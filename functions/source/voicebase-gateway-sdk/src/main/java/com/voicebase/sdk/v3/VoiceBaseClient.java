@@ -1,5 +1,5 @@
 /**
- * Copyright 2016-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved. Licensed under the
+ * Copyright 2016-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved. Licensed under the
  * Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with
  * the License. A copy of the License is located at
  *
@@ -12,10 +12,12 @@
 package com.voicebase.sdk.v3;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.voicebase.sdk.util.ApiException;
 import com.voicebase.v3client.JacksonFactory;
 import com.voicebase.v3client.datamodel.VbMedia;
 import java.io.IOException;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import javax.activation.MimetypesFileTypeMap;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -46,7 +48,8 @@ public class VoiceBaseClient {
     this.mimeMap = mimeMap;
   }
 
-  public String uploadMedia(String token, MediaProcessingRequest request) {
+  public String uploadMedia(String token, MediaProcessingRequest request)
+      throws IOException, ApiException, IllegalArgumentException {
     VbMedia result = null;
 
     LOGGER.debug("Sending request to VoiceBase API: {}", request);
@@ -59,25 +62,33 @@ public class VoiceBaseClient {
       }
     }
 
-    if (request.getMediaFile() != null) {
-      TypedFile file =
-          new TypedFile(mimeMap.getContentType(request.getMediaFile()), request.getMediaFile());
+    try {
 
-      result =
-          mediaService.processMedia(
-              authHeaderValue(token), request.getConfiguration(), request.getMetadata(), file);
-    } else if (request.getMediaUrl() != null) {
-      result =
-          mediaService.processMedia(
-              authHeaderValue(token),
-              request.getConfiguration(),
-              request.getMetadata(),
-              request.getMediaUrl());
-    } else {
-      throw new IllegalArgumentException("Media information missing.");
+      if (request.getMediaFile() != null) {
+        TypedFile file =
+            new TypedFile(mimeMap.getContentType(request.getMediaFile()), request.getMediaFile());
+
+        result =
+            mediaService.processMedia(
+                authHeaderValue(token), request.getConfiguration(), request.getMetadata(), file);
+      } else if (request.getMediaUrl() != null) {
+        result =
+            mediaService.processMedia(
+                authHeaderValue(token),
+                request.getConfiguration(),
+                request.getMetadata(),
+                request.getMediaUrl());
+      } else {
+        throw new IllegalArgumentException("Media information missing.");
+      }
+
+      LOGGER.trace("Voicebase response: {}", result);
+    } catch (ApiException e) {
+      if (e.getError() != null) {
+        LOGGER.debug("VoiceBase API returned an error: {}", e.getError());
+      }
+      throw e;
     }
-
-    LOGGER.trace("Voicebase response: {}", result);
 
     String mediaId = null;
 
@@ -89,43 +100,13 @@ public class VoiceBaseClient {
 
   public String uploadMedia(
       String token, MediaProcessingRequest request, int retryAttempts, long retryDelay)
-      throws IOException {
+      throws IOException, ApiException, IllegalArgumentException {
 
-    int attempt = 0;
-    boolean success = false;
-    String mediaId = null;
-
-    do {
-      attempt++;
-      try {
-        mediaId = uploadMedia(token, request);
-        success = true;
-      } catch (IllegalArgumentException e) {
-        LOGGER.error("Invalid argument.", e);
-        throw e;
-      } catch (Exception e) {
-        // retry
-        if (attempt < 1 + retryAttempts) {
-          try {
-            LOGGER.warn("Error calling VB API, retrying in {}ms", retryDelay, e);
-            Thread.sleep(retryDelay);
-          } catch (InterruptedException e1) {
-            throw new RuntimeException(e1);
-          }
-        } else {
-          if (e instanceof IOException) {
-            throw (IOException) e;
-          } else {
-            throw new IOException(e);
-          }
-        }
-      }
-    } while (!success);
-
-    return mediaId;
+    return executeWithRetry(() -> uploadMedia(token, request), retryAttempts, retryDelay);
   }
 
-  public boolean updateMedia(String token, String mediaId, MediaProcessingRequest request) {
+  public boolean updateMedia(String token, String mediaId, MediaProcessingRequest request)
+      throws IOException, ApiException, IllegalArgumentException {
     VbMedia result = null;
     if (request.getMediaFile() != null) {
       TypedFile file =
@@ -163,38 +144,64 @@ public class VoiceBaseClient {
       MediaProcessingRequest request,
       int retryAttempts,
       long retryDelay)
-      throws IOException {
+      throws IOException, ApiException, IllegalArgumentException {
+
+    boolean success =
+        executeWithRetry(() -> updateMedia(token, mediaId, request), retryAttempts, retryDelay);
+
+    return success ? mediaId : null;
+  }
+
+  private <T> T executeWithRetry(Callable<T> function, int retryAttempts, long retryDelay)
+      throws IOException, ApiException, IllegalArgumentException {
 
     int attempt = 0;
-    boolean success = false;
+    boolean keepTrying = true;
+    T result = null;
 
     do {
       attempt++;
       try {
-        success = updateMedia(token, mediaId, request);
-        if (!success) {
-          throw new IOException("Call to Voiebase not successful.");
+        result = function.call();
+        keepTrying = false;
+      } catch (ApiException | IllegalArgumentException e) {
+        if (isRetryable(e)) {
+          keepTrying = delayRetry(attempt, retryAttempts, retryDelay);
+        } else {
+          throw e;
         }
       } catch (Exception e) {
-        // retry
-        if (attempt < 1 + retryAttempts) {
-          try {
-            LOGGER.warn("Error calling VB API, retrying in {}ms", retryDelay, e);
-            Thread.sleep(retryDelay);
-          } catch (InterruptedException e1) {
-            throw new RuntimeException(e1);
-          }
+        if (isRetryable(e)) {
+          keepTrying = delayRetry(attempt, retryAttempts, retryDelay);
         } else {
-          if (e instanceof IOException) {
-            throw (IOException) e;
-          } else {
-            throw new IOException(e);
-          }
+          throw new IOException(e);
         }
       }
-    } while (!success);
+    } while (keepTrying);
 
-    return mediaId;
+    return result;
+  }
+
+  boolean isRetryable(Exception e) {
+    if (e instanceof ApiException) {
+      return ((ApiException) e).isRetryable();
+    } else if (e instanceof IllegalArgumentException) {
+      return false;
+    }
+    return true;
+  }
+
+  private boolean delayRetry(int attempt, int retryAttempts, long retryDelay) throws IOException {
+    if (attempt < 1 + retryAttempts) {
+      try {
+        LOGGER.warn("Error calling VB API, retrying in {}ms", retryDelay);
+        Thread.sleep(retryDelay);
+        return true;
+      } catch (InterruptedException e1) {
+        throw new RuntimeException(e1);
+      }
+    }
+    return false;
   }
 
   public Map<String, ?> getResources(String token) {
