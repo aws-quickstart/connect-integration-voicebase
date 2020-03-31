@@ -27,9 +27,10 @@ Metadata:
           - EnableMetrics
       - Label:
           default: Amazon Connect Quick Start Configuration
-        Parameters:
-          - QSS3BucketName
-          - QSS3KeyPrefix
+        Parameters:      
+        - QSS3BucketName
+        - QSS3BucketRegion
+        - QSS3KeyPrefix
     ParameterLabels:
       ConnectS3BucketName:
         default: Call Recording Amazon S3 Bucket Name
@@ -47,6 +48,8 @@ Metadata:
         default: Retention Period of VoiceBase Output Stream
       QSS3BucketName:
         default: Quick Start S3 Bucket Name
+      QSS3BucketRegion:
+        default: Quick Start S3 bucket region
       QSS3KeyPrefix:
         default: Quick Start S3 Key Prefix
       OutputS3BucketName:
@@ -73,6 +76,10 @@ Parameters:
     ConstraintDescription: >-
       Quick Start bucket name can include numbers, lowercase letters, uppercase
       letters, and hyphens (-). It cannot start or end with a hyphen (-)
+  QSS3BucketRegion:
+    Default: 'us-east-1'
+    Description: 'The AWS Region where the Quick Start S3 bucket (QSS3BucketName) is hosted. When using your own bucket, you must specify this value.'
+    Type: String
   QSS3KeyPrefix:
     Type: String
     Default: connect-integration-voicebase/
@@ -193,7 +200,9 @@ Rules:
           'Fn::Contains':
             - - us-east-1
             - !Ref 'AWS::Region'
-        AssertDescription: 'Supported regions: US East (N. Virginia) - us-east-1'       
+        AssertDescription: 'Supported regions: US East (N. Virginia) - us-east-1'
+Conditions:
+  UsingDefaultBucket: !Equals [!Ref QSS3BucketName, 'aws-quickstart']
 Resources:
   VoiceBaseStreamStack:
     Type: 'AWS::CloudFormation::Stack'
@@ -228,13 +237,11 @@ Resources:
         VoicebaseCallbackUrl: !GetAtt VoiceBaseStreamStack.Outputs.VoicebaseCallbackUrl
         EnableEncryption: !Ref EnableEncryption
         EnableMetrics: !Ref EnableMetrics
-      TemplateURL: !Join
-          - ''
-          - - 'https://s3.amazonaws.com/'
-            - !Ref QSS3BucketName
-            - '/'
-            - !Ref QSS3KeyPrefix
-            - 'templates/voicebase-module-transcriptions.yaml' 
+      TemplateURL:
+        !Sub
+          - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/voicebase-module-transcriptions.template.yaml'
+          - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+            S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
   VoiceBaseFirehoseStack:
     Type: 'AWS::CloudFormation::Stack'
     Properties:
@@ -245,10 +252,8 @@ Resources:
         EnableEncryption: !Ref EnableEncryption
         OutputS3BucketName: !Ref OutputS3BucketName
         OutputS3KeyPrefix: !Ref OutputS3KeyPrefix
-      TemplateURL: !Join
-          - ''
-          - - 'https://s3.amazonaws.com/'
-            - !Ref QSS3BucketName
-            - '/'
-            - !Ref QSS3KeyPrefix
-            - 'templates/voicebase-module-firehose.yaml'             
+      TemplateURL:
+        !Sub
+          - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/voicebase-module-firehose.template.yaml'
+          - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+            S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]

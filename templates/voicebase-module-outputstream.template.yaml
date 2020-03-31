@@ -218,7 +218,7 @@ Resources:
             - 'true'
             - 'false'
       Runtime: java8
-      Timeout: '90'
+      Timeout: 90
   VoicebaseCallbackLambdaPermission:
     Type: 'AWS::Lambda::Permission'
     Properties:
@@ -280,7 +280,7 @@ Resources:
               - Arn
             - /invocations
         IntegrationResponses:
-          - StatusCode: 200
+          - StatusCode: '200'
         RequestTemplates:
           application/json: !Join 
             - ''
@@ -292,7 +292,7 @@ Resources:
       ResourceId: !Ref VoicebaseCallbackResource
       RestApiId: !Ref VoicebaseCallbackApi
       MethodResponses:
-        - StatusCode: 200
+        - StatusCode: '200'
 Outputs:
   VoicebaseCallbackUrl:
     Description: URL VoiceBase will call when transcriptions are available.

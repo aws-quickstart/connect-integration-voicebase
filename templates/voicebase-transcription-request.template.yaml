@@ -20,6 +20,7 @@ Metadata:
           default: Amazon Connect Quick Start Configuration
         Parameters:
           - QSS3BucketName
+          - QSS3BucketRegion
           - QSS3KeyPrefix
     ParameterLabels:
       ConnectS3BucketName:
@@ -38,6 +39,8 @@ Metadata:
         default: Amazon Connect CTR Output Stream ARN
       QSS3BucketName:
         default: Quick Start S3 Bucket Name
+      QSS3BucketRegion:
+        default: Quick Start S3 bucket region
       QSS3KeyPrefix:
         default: Quick Start S3 Key Prefix
 Parameters:
@@ -48,10 +51,14 @@ Parameters:
       S3 bucket name for the Quick Start assets. This string can include
       numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot
       start or end with a hyphen (-)
-    AllowedPattern: '^[0-9a-zA-Z]+([0-9a-zA-Z-.]*[0-9a-zA-Z])*$'
+    AllowedPattern: "^[0-9a-zA-Z]+([0-9a-zA-Z-.]*[0-9a-zA-Z])*$"
     ConstraintDescription: >-
       Quick Start bucket name can include numbers, lowercase letters, uppercase
       letters, and hyphens (-). It cannot start or end with a hyphen (-)
+  QSS3BucketRegion:
+    Default: "us-east-1"
+    Description: "The AWS Region where the Quick Start S3 bucket (QSS3BucketName) is hosted. When using your own bucket, you must specify this value."
+    Type: String
   QSS3KeyPrefix:
     Type: String
     Default: connect-integration-voicebase/
@@ -59,63 +66,65 @@ Parameters:
       S3 key prefix for the Quick Start assets. Quick Start key prefix can
       include numbers, lowercase letters, uppercase letters, hyphens (-), and
       forward slash (/)
-    AllowedPattern: '^[0-9a-zA-Z-/]*$'
+    AllowedPattern: "^[0-9a-zA-Z-/]*$"
     ConstraintDescription: >-
       Quick Start key prefix can include numbers, lowercase letters, uppercase
       letters, hyphens (-), and forward slash (/)
   VoicebaseApiUrl:
     Type: String
-    Default: 'https://apis.voicebase.com/v3'
+    Default: "https://apis.voicebase.com/v3"
     Description: Base-URL of the VoiceBase API
   VoicebaseApiToken:
     Type: String
     Description: Bearer token used for API authorization to your VoiceBase account
-    NoEcho: 'true'
+    NoEcho: "true"
   VoicebaseEnableKnowledgeDiscovery:
     AllowedValues:
-      - 'no'
-      - 'yes'
+      - "no"
+      - "yes"
     Type: String
-    Default: 'no'
+    Default: "no"
     Description: Enable keyword/topic extraction when processing media files by default
   ConnectS3BucketName:
-      Type: String
-      AllowedPattern: '^[0-9a-zA-Z]+([0-9a-zA-Z-.]*[0-9a-zA-Z])*$'
-      Description: >-
-        Enter the name of the Amazon S3 Bucket where your Amazon Connect instance
-        stores call recordings.
+    Type: String
+    AllowedPattern: "^[0-9a-zA-Z]+([0-9a-zA-Z-.]*[0-9a-zA-Z])*$"
+    Description: >-
+      Enter the name of the Amazon S3 Bucket where your Amazon Connect instance
+      stores call recordings.
   ConnectKinesisStreamArn:
-      Type: String
-      Description: >-
-        Enter the ARN of your Amazon Connect instance's CTR output Amazon Kinesis
-        Data Stream.    
+    Type: String
+    Description: >-
+      Enter the ARN of your Amazon Connect instance's CTR output Amazon Kinesis
+      Data Stream.
   EnableEncryption:
     AllowedValues:
-      - 'yes'
-      - 'no'
+      - "yes"
+      - "no"
     Type: String
-    Default: 'yes'
+    Default: "yes"
     Description: >-
       Enables server-side encryption using an AWS KMS key for the AWS SQS delay queue
   EnableMetrics:
-      AllowedValues:
-        - 'yes'
-        - 'no'
-      Type: String
-      Default: 'yes'
-      Description: >-
-        Enables CloudWatch metrics          
-Rules: 
+    AllowedValues:
+      - "yes"
+      - "no"
+    Type: String
+    Default: "yes"
+    Description: >-
+      Enables CloudWatch metrics
+Rules:
   RegionSupport:
     Assertions:
       - Assert:
-          'Fn::Contains':
+          "Fn::Contains":
             - - us-east-1
-            - !Ref 'AWS::Region'
-        AssertDescription: 'Supported regions: US East (N. Virginia) - us-east-1'       
+            - !Ref "AWS::Region"
+        AssertDescription: "Supported regions: US East (N. Virginia) - us-east-1"
+Conditions:
+  UsingDefaultBucket: !Equals [!Ref QSS3BucketName, "aws-quickstart"]
 Resources:
   VoiceBaseIntegrationStack:
-    Type: 'AWS::CloudFormation::Stack'
+    Type: "AWS::CloudFormation::Stack"
     Properties:
       Parameters:
         QSS3BucketName: !Ref QSS3BucketName
@@ -125,13 +134,16 @@ Resources:
         VoicebaseEnableKnowledgeDiscovery: !Ref VoicebaseEnableKnowledgeDiscovery
         VoicebaseApiUrl: !Ref VoicebaseApiUrl
         VoicebaseApiToken: !Ref VoicebaseApiToken
-        VoicebaseCallbackUrl: ''
+        VoicebaseCallbackUrl: ""
         EnableEncryption: !Ref EnableEncryption
         EnableMetrics: !Ref EnableMetrics
-      TemplateURL: !Join
-          - ''
-          - - 'https://s3.amazonaws.com/'
-            - !Ref QSS3BucketName
-            - '/'
-            - !Ref QSS3KeyPrefix
-            - 'templates/voicebase-module-transcriptions.yaml' 
+      TemplateURL: !Sub
+        - "https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/voicebase-module-transcriptions.template.yaml"
+        - S3Region:
+            !If [UsingDefaultBucket, !Ref "AWS::Region", !Ref QSS3BucketRegion]
+          S3Bucket:
+            !If [
+              UsingDefaultBucket,
+              !Sub "${QSS3BucketName}-${AWS::Region}",
+              !Ref QSS3BucketName,
+            ]

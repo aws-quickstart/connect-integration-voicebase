@@ -1,31 +1,35 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: VoiceBase integration for Amazon Connect - Transcription Stream
+Description: VoiceBase integration for Amazon Connect - Transcription S3 Firehose
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: Amazon Connect configuration
+          default: Amazon Connect Configuration
         Parameters:
           - ConnectS3BucketName
           - ConnectKinesisStreamArn
       - Label:
-          default: VoiceBase transcription configuration
+          default: VoiceBase Configuration
         Parameters:
           - VoicebaseApiUrl
           - VoicebaseApiToken
           - VoicebaseEnableKnowledgeDiscovery
       - Label:
-          default: VoiceBase output configuration
+          default: VoiceBase Output Configuration
         Parameters:
           - NumberOfKinesisShards
           - KinesisRetentionPeriod
+          - OutputS3BucketName
+          - OutputS3KeyPrefix
+          - OutputAppendNewline
+          - EnableOutputTrimming          
           - EnableEncryption
-          - EnableOutputTrimming
           - EnableMetrics
       - Label:
-          default: Amazon Connect Quick Start configuration
-        Parameters:
+          default: AWS Quick Start configuration
+        Parameters:      
           - QSS3BucketName
+          - QSS3BucketRegion
           - QSS3KeyPrefix
     ParameterLabels:
       ConnectS3BucketName:
@@ -42,16 +46,24 @@ Metadata:
         default: Number of Shards for VoiceBase Output Stream
       KinesisRetentionPeriod:
         default: Retention Period of VoiceBase Output Stream
+      QSS3BucketName:
+        default: Quick Start S3 Bucket Name
+      QSS3BucketRegion:
+        default: Quick Start S3 bucket region
+      QSS3KeyPrefix:
+        default: Quick Start S3 Key Prefix
+      OutputS3BucketName:
+        default: VoiceBase Transcription Output S3 Bucket Name
+      OutputS3KeyPrefix:
+        default: VoiceBase Transcription Output S3 Key Prefix
+      OutputAppendNewline:
+        default: Append Newline Character to Transcription Output
       EnableEncryption:
         default: Enable Encryption
       EnableMetrics:
         default: Enable CloudWatch Metrics
       EnableOutputTrimming:
         default: Enable Output Trimming  
-      QSS3BucketName:
-        default: Quick Start S3 Bucket Name
-      QSS3KeyPrefix:
-        default: Quick Start S3 Key Prefix
 Parameters:
   QSS3BucketName:
     Type: String
@@ -64,6 +76,10 @@ Parameters:
     ConstraintDescription: >-
       Quick Start bucket name can include numbers, lowercase letters, uppercase
       letters, and hyphens (-). It cannot start or end with a hyphen (-)
+  QSS3BucketRegion:
+    Default: 'us-east-1'
+    Description: 'The AWS Region where the Quick Start S3 bucket (QSS3BucketName) is hosted. When using your own bucket, you must specify this value.'
+    Type: String
   QSS3KeyPrefix:
     Type: String
     Default: connect-integration-voicebase/
@@ -106,8 +122,8 @@ Parameters:
     Default: 1
     MinValue: 1
     Description: >-
-      Number of shards for transcription Amazon Kinesis Data Stream. This should be 
-      at least the number of shards on your Amazon Connect instance's output Amazon
+      Number of shards for transcription Data Stream.  This should be at least
+      the number of shards on your Amazon Connect instance's output Amazon
       Kinesis Data Stream.
   KinesisRetentionPeriod:
     Type: Number
@@ -115,8 +131,8 @@ Parameters:
     MinValue: 24
     MaxValue: 168
     Description: >-
-      Number of hours data remains in the Amazon Kinesis Data Stream before being 
-      removed. Specify a data retention period between 24 and 168 hours. 
+      Number of hours data remains in the Amazon Kinesis stream before being removed.
+      Specify a data retention period between 24 and 168 hours. 
   EnableEncryption:
     AllowedValues:
       - 'yes'
@@ -124,8 +140,33 @@ Parameters:
     Type: String
     Default: 'yes'
     Description: >-
-      Enable server-side encryption to encrypt sensitive data in the output Kinesis 
-      stream as well as the AWS SQS delay queue with an AWS KMS master key
+      Enables server-side encryption of the AWS SQS delay queue, the Amazon Kinesis 
+      output stream as well as the S3 output using an AWS KMS key.    
+  OutputAppendNewline:
+    AllowedValues:
+      - 'yes'
+      - 'no'
+    Type: String
+    Default: 'yes'
+    Description: >-
+      Append Newline Character to Transcription Output. Useful when using ETL
+      tools that support NLDJSON.
+  OutputS3BucketName:
+    Type: String
+    AllowedPattern: '^[0-9a-zA-Z]+([0-9a-zA-Z-.]*[0-9a-zA-Z])*$'
+    Description: >-
+      S3 bucket where the transcription output will be stored. NOTE: It's
+      recommended NOT to use your connect integration S3 bucket for output.
+  OutputS3KeyPrefix:
+    Type: String
+    Default: connect/voicebase/transcriptions/
+    Description: >-
+      S3 key prefix for VoiceBase transcription delivery; can include numbers,
+      lowercase letters, uppercase letters, hyphens (-), and forward slash (/)
+    AllowedPattern: '^[0-9a-zA-Z-/]*$'
+    ConstraintDescription: >-
+      VoiceBase transcription key prefix can include numbers, lowercase letters,
+      uppercase letters, hyphens (-), and forward slash (/)
   EnableMetrics:
       AllowedValues:
         - 'yes'
@@ -153,6 +194,8 @@ Rules:
             - - us-east-1
             - !Ref 'AWS::Region'
         AssertDescription: 'Supported regions: US East (N. Virginia) - us-east-1'       
+Conditions:
+  UsingDefaultBucket: !Equals [!Ref QSS3BucketName, 'aws-quickstart']
 Resources:
   VoiceBaseStreamStack:
     Type: 'AWS::CloudFormation::Stack'
@@ -163,15 +206,14 @@ Resources:
         NumberOfKinesisShards: !Ref NumberOfKinesisShards
         KinesisRetentionPeriod: !Ref KinesisRetentionPeriod
         EnableEncryption: !Ref EnableEncryption
-        OutputAppendNewline: 'no'
+        EnableMetrics: !Ref EnableMetrics
+        OutputAppendNewline: !Ref OutputAppendNewline
         EnableOutputTrimming: !Ref EnableOutputTrimming
-      TemplateURL: !Join
-          - ''
-          - - 'https://s3.amazonaws.com/'
-            - !Ref QSS3BucketName
-            - '/'
-            - !Ref QSS3KeyPrefix
-            - 'templates/voicebase-module-outputstream.yaml' 
+      TemplateURL:
+        !Sub
+          - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/voicebase-module-outputstream.template.yaml'
+          - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+            S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
   VoiceBaseIntegrationStack:
     Type: 'AWS::CloudFormation::Stack'
     Properties:
@@ -180,15 +222,29 @@ Resources:
         QSS3KeyPrefix: !Ref QSS3KeyPrefix
         ConnectS3BucketName: !Ref ConnectS3BucketName
         ConnectKinesisStreamArn: !Ref ConnectKinesisStreamArn
-        EnableEncryption: !Ref EnableEncryption
         VoicebaseEnableKnowledgeDiscovery: !Ref VoicebaseEnableKnowledgeDiscovery
         VoicebaseApiUrl: !Ref VoicebaseApiUrl
         VoicebaseApiToken: !Ref VoicebaseApiToken
         VoicebaseCallbackUrl: !GetAtt VoiceBaseStreamStack.Outputs.VoicebaseCallbackUrl
-      TemplateURL: !Join
-          - ''
-          - - 'https://s3.amazonaws.com/'
-            - !Ref QSS3BucketName
-            - '/'
-            - !Ref QSS3KeyPrefix
-            - 'templates/voicebase-module-transcriptions.yaml' 
+        EnableEncryption: !Ref EnableEncryption
+        EnableMetrics: !Ref EnableMetrics
+      TemplateURL:
+        !Sub
+          - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/voicebase-module-transcriptions.template.yaml'
+          - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+            S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
+  VoiceBaseFirehoseStack:
+    Type: 'AWS::CloudFormation::Stack'
+    Properties:
+      Parameters:
+        QSS3BucketName: !Ref QSS3BucketName
+        QSS3KeyPrefix: !Ref QSS3KeyPrefix
+        VoicebaseTranscriptionStreamArn: !GetAtt VoiceBaseStreamStack.Outputs.VoicebaseTranscriptionStream
+        EnableEncryption: !Ref EnableEncryption
+        OutputS3BucketName: !Ref OutputS3BucketName
+        OutputS3KeyPrefix: !Ref OutputS3KeyPrefix
+      TemplateURL:
+        !Sub
+          - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/voicebase-module-firehose.template.yaml'
+          - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+            S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
