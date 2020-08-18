@@ -245,7 +245,7 @@ Resources:
           VOICEBASE_API_TOKEN: !Ref VoicebaseApiToken
           VOICEBASE_MONITORING_ENABLE: 'false'
       Runtime: java8
-      Timeout: '60'
+      Timeout: 60
   VoicebaseTokenValidation:
     Type: 'Custom::VoicebaseTokenValidation'
     Properties:
@@ -283,7 +283,7 @@ Resources:
             - 'true'
             - 'false'
       Runtime: java8
-      Timeout: '90'
+      Timeout: 90
   ConnectToVoicebaseSQSLambda:
     Type: 'AWS::Lambda::Function'
     Properties:
@@ -314,7 +314,7 @@ Resources:
             - 'true'
             - 'false'
       Runtime: java8
-      Timeout: '90'
+      Timeout: 90
   ConnectToVoicebaseLambdaKinesisMapping:
     Type: 'AWS::Lambda::EventSourceMapping'
     Properties:
