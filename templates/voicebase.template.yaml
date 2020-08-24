@@ -207,7 +207,7 @@ Resources:
     Type: 'AWS::CloudFormation::Stack'
     Properties:
       Parameters:
-        QSS3BucketName: !Ref QSS3BucketName
+        QSS3BucketName: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
         QSS3KeyPrefix: !Ref QSS3KeyPrefix
         NumberOfKinesisShards: !Ref NumberOfKinesisShards
         KinesisRetentionPeriod: !Ref KinesisRetentionPeriod
@@ -224,7 +224,7 @@ Resources:
     Type: 'AWS::CloudFormation::Stack'
     Properties:
       Parameters:
-        QSS3BucketName: !Ref QSS3BucketName
+        QSS3BucketName: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
         QSS3KeyPrefix: !Ref QSS3KeyPrefix
         ConnectS3BucketName: !Ref ConnectS3BucketName
         ConnectKinesisStreamArn: !Ref ConnectKinesisStreamArn
@@ -243,8 +243,6 @@ Resources:
     Type: 'AWS::CloudFormation::Stack'
     Properties:
       Parameters:
-        QSS3BucketName: !Ref QSS3BucketName
-        QSS3KeyPrefix: !Ref QSS3KeyPrefix
         VoicebaseTranscriptionStreamArn: !GetAtt VoiceBaseStreamStack.Outputs.VoicebaseTranscriptionStream
         EnableEncryption: !Ref EnableEncryption
         OutputS3BucketName: !Ref OutputS3BucketName
