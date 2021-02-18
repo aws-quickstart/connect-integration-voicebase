@@ -27,7 +27,7 @@
     <maven.compiler.source>${java.version}</maven.compiler.source>
     <maven.compiler.target>${java.version}</maven.compiler.target>
 
-    <jackson2.version>2.10.3</jackson2.version>
+    <jackson2.version>2.12.1</jackson2.version>
     <awssdk.version>1.11.198</awssdk.version>
     <retrofit.version>1.9.0</retrofit.version>
     <httpclient.version>4.5.3</httpclient.version>
